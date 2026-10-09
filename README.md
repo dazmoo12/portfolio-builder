@@ -41,6 +41,18 @@ npm run build      # type-check + production build (static files in dist/)
 - `http://localhost:5173/?report` shows the PDF layout on screen (to check templates without printing).
 - `npx vite-node scripts/sample-exports.ts <out-dir>` writes sample PPTX files (DE/EN/PT × 3 templates).
 
+## Deployment (Netlify)
+
+The app is a static site: Netlify only serves the files, and all calculations, exports and document reading run in each advisor's browser. Client data never reaches the server, and any number of advisors can use it at the same time.
+
+1. Netlify → *Add new site* → *Import an existing project* → GitHub → allow access to `dazmoo12/portfolio-builder`. The build settings come from `netlify.toml`.
+2. *Site configuration → Environment variables*: set `SITE_USER` and `SITE_PASSWORD`. The edge function `netlify/edge-functions/password.ts` protects the whole site, including deploy previews. Without these variables the site stays locked.
+3. Deploy. Every push to `main` deploys automatically.
+
+Use the Git connection, not a drag-and-drop deploy: drag-and-drop deploys don't run edge functions, so the site would be public. Search engines are blocked (`robots.txt`, `X-Robots-Tag`).
+
+Per-browser data: advisor profiles, custom templates and the last open client are stored in the browser of each advisor. Templates can be shared as template files.
+
 ## Architecture
 
 | Layer | Folder | Notes |
