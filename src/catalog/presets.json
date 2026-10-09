@@ -1,0 +1,62 @@
+{
+  "_comment": "Quick-start presets per risk profile. Weights are suggestions for the prototype – advisors to confirm. 'monthly'/'oneOff' = share of the respective total.",
+  "presets": [
+    {
+      "id": "defensiv",
+      "name": { "de": "Defensiv", "en": "Defensive", "pt": "Defensivo" },
+      "positions": [
+        { "productId": "avd", "monthly": 0.7, "oneOff": 0 },
+        { "productId": "rp-defensiv", "monthly": 0.2, "oneOff": 0.9 },
+        { "productId": "metal-gold", "monthly": 0.1, "oneOff": 0.1 }
+      ]
+    },
+    {
+      "id": "substanz",
+      "name": { "de": "Substanz", "en": "Substance", "pt": "Substância" },
+      "positions": [
+        { "productId": "avd", "monthly": 0.6, "oneOff": 0 },
+        { "productId": "rp-substanz", "monthly": 0.3, "oneOff": 0.85 },
+        { "productId": "metal-gold", "monthly": 0.1, "oneOff": 0.15 }
+      ]
+    },
+    {
+      "id": "konservativ",
+      "name": { "de": "Konservativ", "en": "Conservative", "pt": "Conservador" },
+      "positions": [
+        { "productId": "avd", "monthly": 0.5, "oneOff": 0 },
+        { "productId": "rp-konservativ", "monthly": 0.35, "oneOff": 0.85 },
+        { "productId": "metal-gold", "monthly": 0.15, "oneOff": 0.15 }
+      ]
+    },
+    {
+      "id": "balance",
+      "name": { "de": "Balance", "en": "Balanced", "pt": "Equilibrado" },
+      "positions": [
+        { "productId": "avd", "monthly": 0.4, "oneOff": 0 },
+        { "productId": "rp-balance", "monthly": 0.45, "oneOff": 0.85 },
+        { "productId": "metal-gold", "monthly": 0.15, "oneOff": 0.15 }
+      ]
+    },
+    {
+      "id": "dynamisch",
+      "name": { "de": "Dynamisch", "en": "Dynamic", "pt": "Dinâmico" },
+      "positions": [
+        { "productId": "avd", "monthly": 0.35, "oneOff": 0 },
+        { "productId": "rp-dynamisch", "monthly": 0.5, "oneOff": 0.8 },
+        { "productId": "metal-gold", "monthly": 0.1, "oneOff": 0.15 },
+        { "productId": "metal-silver", "monthly": 0.05, "oneOff": 0.05 }
+      ]
+    },
+    {
+      "id": "offensiv",
+      "name": { "de": "Offensiv", "en": "Offensive", "pt": "Ofensivo" },
+      "positions": [
+        { "productId": "avd", "monthly": 0.3, "oneOff": 0 },
+        { "productId": "rp-offensiv", "monthly": 0.45, "oneOff": 0.7 },
+        { "productId": "fund-dws-gold-equities", "monthly": 0.1, "oneOff": 0.15 },
+        { "productId": "metal-gold", "monthly": 0.1, "oneOff": 0.1 },
+        { "productId": "metal-silver", "monthly": 0.05, "oneOff": 0.05 }
+      ]
+    }
+  ]
+}

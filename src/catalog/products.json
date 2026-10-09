@@ -1,0 +1,193 @@
+{
+  "_comment": "Product catalogue. Add products here – no code change needed. Returns are p.a. after ongoing fund costs, per scenario. Values marked in 'source' as ASSUMPTION must be confirmed by Product/Compliance.",
+  "products": [
+    {
+      "id": "avd",
+      "kind": "avd",
+      "group": "pension",
+      "name": { "de": "Altersvorsorgedepot (AVD)", "en": "Retirement Savings Account (AVD)", "pt": "Conta Poupança-Reforma (AVD)" },
+      "description": {
+        "de": "Staatlich gefördertes Depot ab 1.1.2027: bis 540 € Zulage p. a., Kinderzulage bis 300 € je Kind, Berufsstarter-Bonus 200 €.",
+        "en": "Government-subsidised account from 1 Jan 2027: up to €540 subsidy p.a., child bonus up to €300 per child, €200 starter bonus.",
+        "pt": "Conta subsidiada pelo Estado a partir de 1/1/2027: até 540 € de subsídio por ano, bónus por filho até 300 €, bónus inicial de 200 €."
+      },
+      "returns": { "pessimistic": 0.04, "neutral": 0.07, "optimistic": 0.09 },
+      "allowsOneOff": false,
+      "minMonthly": 10,
+      "source": "Neutral 7 % = historical average used in AVD offers. Pessimistic/optimistic: ASSUMPTION."
+    },
+
+    {
+      "id": "rp-defensiv",
+      "kind": "fund",
+      "group": "riskProfile",
+      "name": { "de": "DVAG Anlagevorschlag Defensiv", "en": "DVAG Portfolio Defensive", "pt": "Carteira DVAG Defensiva" },
+      "description": { "de": "100 % Anleihefonds (Ultra-Kurzläufer).", "en": "100% bond funds (ultra-short duration).", "pt": "100 % fundos de obrigações (muito curto prazo)." },
+      "returns": { "pessimistic": 0.01, "neutral": 0.02, "optimistic": 0.03 },
+      "volatility": 0.002,
+      "allowsOneOff": true,
+      "minOneOff": 3000,
+      "source": "Investmentkonzept DVAG, März 2026. Returns: ASSUMPTION."
+    },
+    {
+      "id": "rp-substanz",
+      "kind": "fund",
+      "group": "riskProfile",
+      "name": { "de": "DVAG Anlagevorschlag Substanz", "en": "DVAG Portfolio Substance", "pt": "Carteira DVAG Substância" },
+      "description": { "de": "Anleihe- und Mischfonds als solide Basis für Einsteiger.", "en": "Bond and mixed funds as a solid basis for first-time investors.", "pt": "Fundos de obrigações e mistos como base sólida para iniciantes." },
+      "returns": { "pessimistic": 0.01, "neutral": 0.03, "optimistic": 0.045 },
+      "volatility": 0.023,
+      "allowsOneOff": true,
+      "minOneOff": 3000,
+      "source": "Investmentkonzept DVAG, März 2026. Returns: ASSUMPTION."
+    },
+    {
+      "id": "rp-konservativ",
+      "kind": "fund",
+      "group": "riskProfile",
+      "name": { "de": "DVAG Anlagevorschlag Konservativ", "en": "DVAG Portfolio Conservative", "pt": "Carteira DVAG Conservadora" },
+      "description": { "de": "Schwerpunkt Anleihen, ergänzt um Misch- und Dividendenfonds.", "en": "Focus on bonds, complemented by mixed and dividend funds.", "pt": "Foco em obrigações, complementado com fundos mistos e de dividendos." },
+      "returns": { "pessimistic": 0.015, "neutral": 0.035, "optimistic": 0.05 },
+      "volatility": 0.04,
+      "allowsOneOff": true,
+      "minOneOff": 3000,
+      "source": "Investmentkonzept DVAG, März 2026. Returns: ASSUMPTION."
+    },
+    {
+      "id": "rp-balance",
+      "kind": "fund",
+      "group": "riskProfile",
+      "name": { "de": "DVAG Anlagevorschlag Balance", "en": "DVAG Portfolio Balanced", "pt": "Carteira DVAG Equilibrada" },
+      "description": { "de": "Ausgewogene Mischung aus Anleihen-, Misch- und globalen Aktienfonds.", "en": "Balanced mix of bond, mixed and global equity funds.", "pt": "Combinação equilibrada de fundos de obrigações, mistos e de ações globais." },
+      "returns": { "pessimistic": 0.025, "neutral": 0.05, "optimistic": 0.07 },
+      "volatility": 0.065,
+      "allowsOneOff": true,
+      "minOneOff": 3000,
+      "source": "Investmentkonzept DVAG, März 2026. Returns: ASSUMPTION."
+    },
+    {
+      "id": "rp-dynamisch",
+      "kind": "fund",
+      "group": "riskProfile",
+      "name": { "de": "DVAG Anlagevorschlag Dynamisch", "en": "DVAG Portfolio Dynamic", "pt": "Carteira DVAG Dinâmica" },
+      "description": { "de": "Überwiegend globale Aktienfonds, ergänzt um Misch- und Anleihefonds.", "en": "Mainly global equity funds, complemented by mixed and bond funds.", "pt": "Sobretudo fundos de ações globais, complementados com fundos mistos e de obrigações." },
+      "returns": { "pessimistic": 0.03, "neutral": 0.06, "optimistic": 0.085 },
+      "volatility": 0.09,
+      "allowsOneOff": true,
+      "minOneOff": 3000,
+      "source": "Investmentkonzept DVAG, März 2026. Returns: ASSUMPTION."
+    },
+    {
+      "id": "rp-offensiv",
+      "kind": "fund",
+      "group": "riskProfile",
+      "name": { "de": "DVAG Anlagevorschlag Offensiv", "en": "DVAG Portfolio Offensive", "pt": "Carteira DVAG Ofensiva" },
+      "description": { "de": "Bis zu 70 % globale Aktienfonds für maximale Renditechancen.", "en": "Up to 70% global equity funds for maximum return potential.", "pt": "Até 70 % em fundos de ações globais para o máximo potencial de retorno." },
+      "returns": { "pessimistic": 0.03, "neutral": 0.07, "optimistic": 0.10 },
+      "volatility": 0.11,
+      "allowsOneOff": true,
+      "minOneOff": 3000,
+      "source": "Investmentkonzept DVAG, März 2026. Returns: ASSUMPTION."
+    },
+
+    {
+      "id": "fund-dws-vbi",
+      "kind": "fund",
+      "group": "fund",
+      "name": { "de": "DWS Vermögensbildungsfonds I", "en": "DWS Vermögensbildungsfonds I", "pt": "DWS Vermögensbildungsfonds I" },
+      "description": { "de": "Globaler Aktienfonds, aktiv gemanagt. 12,7 % p. a. über 10 Jahre (06/16–06/26).", "en": "Global equity fund, actively managed. 12.7% p.a. over 10 years (06/16–06/26).", "pt": "Fundo de ações global, gestão ativa. 12,7 % ao ano em 10 anos (06/16–06/26)." },
+      "returns": { "pessimistic": 0.03, "neutral": 0.07, "optimistic": 0.10 },
+      "allowsOneOff": true,
+      "minMonthly": 25,
+      "isin": "DE0008476524",
+      "source": "DWS fund profile 07/2026. Returns: ASSUMPTION (historical 12.7 % not used as forecast)."
+    },
+    {
+      "id": "fund-dws-gold-equities",
+      "kind": "fund",
+      "group": "fund",
+      "name": { "de": "DWS Invest Gold and Precious Metals Equities", "en": "DWS Invest Gold and Precious Metals Equities", "pt": "DWS Invest Gold and Precious Metals Equities" },
+      "description": { "de": "Aktien von Gold- und Edelmetallminen. 17,5 % p. a. über 10 Jahre, hohe Schwankungen.", "en": "Gold and precious metals mining equities. 17.5% p.a. over 10 years, high volatility.", "pt": "Ações de mineração de ouro e metais preciosos. 17,5 % ao ano em 10 anos, alta volatilidade." },
+      "returns": { "pessimistic": 0.0, "neutral": 0.06, "optimistic": 0.11 },
+      "allowsOneOff": true,
+      "minMonthly": 25,
+      "isin": "LU0363470401",
+      "source": "DWS fund profile 04/2026. Returns: ASSUMPTION."
+    },
+    {
+      "id": "fund-dws-top-dividende",
+      "kind": "fund",
+      "group": "fund",
+      "name": { "de": "DWS Top Dividende LD", "en": "DWS Top Dividende LD", "pt": "DWS Top Dividende LD" },
+      "description": { "de": "Globaler Dividenden-Aktienfonds.", "en": "Global dividend equity fund.", "pt": "Fundo global de ações de dividendos." },
+      "returns": { "pessimistic": 0.025, "neutral": 0.055, "optimistic": 0.08 },
+      "allowsOneOff": true,
+      "minMonthly": 25,
+      "source": "Fondsauswahl DVAG Anlagevorschläge, März 2026. Returns: ASSUMPTION."
+    },
+    {
+      "id": "fund-kaldemorgen",
+      "kind": "fund",
+      "group": "fund",
+      "name": { "de": "DWS Concept Kaldemorgen EUR LD", "en": "DWS Concept Kaldemorgen EUR LD", "pt": "DWS Concept Kaldemorgen EUR LD" },
+      "description": { "de": "Mischfonds mit Risikomanagement.", "en": "Mixed fund with risk management.", "pt": "Fundo misto com gestão de risco." },
+      "returns": { "pessimistic": 0.015, "neutral": 0.04, "optimistic": 0.06 },
+      "allowsOneOff": true,
+      "minMonthly": 25,
+      "source": "Fondsauswahl DVAG Anlagevorschläge, März 2026. Returns: ASSUMPTION."
+    },
+    {
+      "id": "fund-champions-balance",
+      "kind": "fund",
+      "group": "fund",
+      "name": { "de": "Champions Select Balance LD", "en": "Champions Select Balance LD", "pt": "Champions Select Balance LD" },
+      "description": { "de": "Globaler Mischfonds, ausgewogen.", "en": "Global mixed fund, balanced.", "pt": "Fundo misto global, equilibrado." },
+      "returns": { "pessimistic": 0.02, "neutral": 0.045, "optimistic": 0.065 },
+      "allowsOneOff": true,
+      "minMonthly": 25,
+      "source": "Fondsauswahl DVAG Anlagevorschläge, März 2026. Returns: ASSUMPTION."
+    },
+    {
+      "id": "fund-champions-dynamic",
+      "kind": "fund",
+      "group": "fund",
+      "name": { "de": "Champions Select Dynamic LD", "en": "Champions Select Dynamic LD", "pt": "Champions Select Dynamic LD" },
+      "description": { "de": "Globaler Mischfonds, dynamisch.", "en": "Global mixed fund, dynamic.", "pt": "Fundo misto global, dinâmico." },
+      "returns": { "pessimistic": 0.025, "neutral": 0.055, "optimistic": 0.08 },
+      "allowsOneOff": true,
+      "minMonthly": 25,
+      "source": "Fondsauswahl DVAG Anlagevorschläge, März 2026. Returns: ASSUMPTION."
+    },
+
+    {
+      "id": "metal-gold",
+      "kind": "metal",
+      "group": "metal",
+      "name": { "de": "Geiger Goldsparplan", "en": "Geiger Gold Savings Plan", "pt": "Plano de Poupança em Ouro Geiger" },
+      "description": { "de": "Physisches Anlagegold 999,9, versichert gelagert. Gewinne nach 12 Monaten steuerfrei.", "en": "Physical investment gold 999.9 in insured storage. Gains tax-free after 12 months.", "pt": "Ouro físico de investimento 999,9 em armazenamento seguro. Ganhos isentos de imposto após 12 meses." },
+      "returns": { "pessimistic": 0.01, "neutral": 0.05, "optimistic": 0.08 },
+      "entryFee": 0.08,
+      "annualFee": 0.01,
+      "exitFee": 0.007,
+      "allowsOneOff": true,
+      "minMonthly": 25,
+      "minOneOff": 250,
+      "source": "Geiger / Onepager Edelmetallsparpläne 09/2026: markup 8.0 %, buyback 0.7 %, storage 1.0 % p.a. Gold price 2000–2025: 10.5 % p.a. Returns: ASSUMPTION."
+    },
+    {
+      "id": "metal-silver",
+      "kind": "metal",
+      "group": "metal",
+      "name": { "de": "Geiger Silbersparplan", "en": "Geiger Silver Savings Plan", "pt": "Plano de Poupança em Prata Geiger" },
+      "description": { "de": "Physisches Silber im Zollfreilager (19 % USt gespart). Gewinne nach 12 Monaten steuerfrei.", "en": "Physical silver in a bonded warehouse (19% VAT saved). Gains tax-free after 12 months.", "pt": "Prata física em armazém aduaneiro (19 % de IVA poupado). Ganhos isentos de imposto após 12 meses." },
+      "returns": { "pessimistic": 0.0, "neutral": 0.04, "optimistic": 0.08 },
+      "entryFee": 0.106,
+      "annualFee": 0.0131,
+      "exitFee": 0,
+      "allowsOneOff": true,
+      "minMonthly": 25,
+      "minOneOff": 250,
+      "source": "Geiger / Onepager Edelmetallsparpläne 09/2026: markup 10.6 %, no buyback discount, storage 1.31 % p.a. Returns: ASSUMPTION."
+    }
+  ]
+}
