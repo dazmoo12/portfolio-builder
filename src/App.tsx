@@ -51,6 +51,12 @@ export default function App() {
     [check, household],
   );
   const onYear = useCallback((yearIndex: number) => update({ yearIndex }), [update]);
+  const togglePosition = (uid: string) =>
+    setState((s) => {
+      const { hidden } = s.output;
+      return { ...s, output: { ...s.output, hidden: hidden.includes(uid) ? hidden.filter((x) => x !== uid) : [...hidden, uid] } };
+    });
+  const fileSafeName = vm.clientName.replace(/[^\p{L}\p{N}-]+/gu, '_');
 
   const saveTheme = (th: Theme) => {
     const next = [...customThemes.filter((x) => x.id !== th.id), th];
@@ -69,7 +75,7 @@ export default function App() {
   useEffect(() => {
     if (!printing) return;
     const prevTitle = document.title;
-    document.title = `Portfolio_${state.input.client.name.replace(/\s+/g, '_')}_${state.reportLang.toUpperCase()}`;
+    document.title = `Portfolio_${fileSafeName}_${state.reportLang.toUpperCase()}`;
     const done = () => {
       document.title = prevTitle;
       setPrinting(false);
@@ -85,7 +91,7 @@ export default function App() {
   const savePortfolio = () => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }));
-    a.download = `Portfolio_${state.input.client.name.replace(/\s+/g, '_')}.json`;
+    a.download = `Portfolio_${fileSafeName}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
   };
@@ -122,7 +128,11 @@ export default function App() {
           </button>
           <label className="lang">
             <span>{t('uiLanguage')}</span>
-            <select value={state.uiLang} onChange={(e) => update({ uiLang: e.target.value as Lang })}>
+            <select
+              value={state.uiLang}
+              // switches the document too; the export section can still set a different document language
+              onChange={(e) => update({ uiLang: e.target.value as Lang, reportLang: e.target.value as Lang })}
+            >
               {languages.map((l) => (
                 <option key={l.code} value={l.code}>
                   {l.label}
@@ -224,7 +234,7 @@ export default function App() {
             </button>
           </div>
           {stageTab === 'preview' ? (
-            <Preview vm={vm} ui={t} uiLang={state.uiLang} warnings={warnings} household={household} onYear={onYear} />
+            <Preview vm={vm} ui={t} uiLang={state.uiLang} warnings={warnings} household={household} onYear={onYear} onTogglePosition={togglePosition} />
           ) : (
             <DocumentsView t={t} fmt={fmt} docs={docs} state={state} setState={setState} />
           )}

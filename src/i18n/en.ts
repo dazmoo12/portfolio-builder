@@ -227,6 +227,21 @@ export const en = {
   field_age: 'Age',
   field_birthDate: 'Date of birth',
   field_children: 'Child (birth year)',
+
+  // second adult
+  addAdult: '+ Second adult',
+  secondAdult: 'Second adult',
+  childBonusFor: 'Child bonus goes to',
+  avdOwner: 'AVD of',
+  field_partnerName: 'Second adult – name',
+  field_partnerAge: 'Second adult – age',
+  warn_avdDuplicate: 'The subsidy applies once per person – assign only one AVD to each person.',
+
+  // product selection
+  shownProducts: 'Products shown',
+  partialNote: 'Partial view: figures and charts exclude {products}.',
+  ageFromBirthDate: 'Calculated from the date of birth',
+  field_partnerBirthDate: 'Second adult – date of birth',
 };
 
 export type Dict = typeof en;

@@ -13,6 +13,19 @@ import { builtInThemes } from '../src/templates/themes';
 const s = defaultState();
 const projection = project(s.input, catalog);
 const cases: [Lang, number][] = [['de', 0], ['en', 1], ['pt', 2]];
+// EN deck: couple with one AVD each, gold switched off
+const couple = {
+  ...s,
+  input: {
+    ...s.input,
+    client: { ...s.input.client, partner: { name: 'Max Beispiel', age: 34 } },
+    positions: [
+      ...s.input.positions.map((p) => (p.productId === 'avd' ? { ...p, monthlyWeight: 0.2 } : p)),
+      { uid: 'avd-max', productId: 'avd', owner: 'partner' as const, monthlyWeight: 0.2, oneOffWeight: 0 },
+    ],
+  },
+};
+const goldUid = s.input.positions.find((p) => p.productId === 'metal-gold')!.uid;
 process.chdir(process.argv[2] ?? '.');
 for (const [lang, ti] of cases) {
   // PT deck: all charts, other scenarios as lines, allocation as bars
@@ -20,7 +33,10 @@ for (const [lang, ti] of cases) {
     lang === 'pt'
       ? { ...s.output, showRange: true, allocationStyle: 'bar' as const, charts: { development: true, allocation: true, scenarios: true, composition: true } }
       : s.output;
-  const vm = buildViewModel(s.input, projection, builtInThemes[ti], lang, s.yearIndex, false, output);
+  const en = lang === 'en';
+  const vm = en
+    ? buildViewModel(couple.input, project(couple.input, catalog), builtInThemes[ti], lang, s.yearIndex, false, { ...output, hidden: [goldUid] })
+    : buildViewModel(s.input, projection, builtInThemes[ti], lang, s.yearIndex, false, output);
   const blob = await exportPptx(vm, s.advisor, buildHouseholdView(s, vm));
   writeFileSync(pptxFileName(vm), Buffer.from(await blob.arrayBuffer()));
   console.log('written', lang, builtInThemes[ti].name);

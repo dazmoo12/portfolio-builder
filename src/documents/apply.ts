@@ -21,7 +21,7 @@ export function applyCandidate(s: AppState, c: Candidate): AppState {
       return { ...s, household: { ...s.household, [side]: setLine(s.household[side], c.target.key, Number(c.value)) } };
     }
     case 'birthDate':
-      return { ...s, input: { ...s.input, client: { ...client, age: ageOn(String(c.value)) } } };
+      return { ...s, input: { ...s.input, client: { ...client, birthDate: String(c.value), age: ageOn(String(c.value)) } } };
     case 'childBirthYear': {
       const y = Number(c.value);
       if (client.childrenBirthYears.includes(y)) return s;
@@ -35,9 +35,15 @@ export function applyCandidate(s: AppState, c: Candidate): AppState {
 export function applyTemplate(s: AppState, d: TemplateData): AppState {
   const client = { ...s.input.client };
   if (d.name) client.name = d.name;
-  if (d.birthDate) client.age = ageOn(d.birthDate);
-  else if (d.age) client.age = d.age;
+  if (d.birthDate) {
+    client.birthDate = d.birthDate;
+    client.age = ageOn(d.birthDate);
+  } else if (d.age) client.age = d.age;
   if (d.childrenBirthYears) client.childrenBirthYears = d.childrenBirthYears;
+  if (d.partnerName) {
+    const age = d.partnerBirthDate ? ageOn(d.partnerBirthDate) : d.partnerAge ?? client.partner?.age ?? client.age;
+    client.partner = { ...client.partner, name: d.partnerName, age, ...(d.partnerBirthDate && { birthDate: d.partnerBirthDate }) };
+  }
   let { income, expenses } = s.household;
   for (const l of d.household.income) income = setLine(income, l.key!, l.amount);
   for (const l of d.household.expenses) expenses = setLine(expenses, l.key!, l.amount);

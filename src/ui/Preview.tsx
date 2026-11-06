@@ -18,9 +18,10 @@ interface Props {
   household?: HouseholdView;
   uiLang: Lang;
   onYear: (yearIndex: number) => void;
+  onTogglePosition: (uid: string) => void;
 }
 
-export function Preview({ vm, ui, uiLang, warnings, household, onYear }: Props) {
+export function Preview({ vm, ui, uiLang, warnings, household, onYear, onTogglePosition }: Props) {
   const { t, fmt } = vm;
   const [playing, setPlaying] = useState(false);
   const timer = useRef<number>();
@@ -47,6 +48,11 @@ export function Preview({ vm, ui, uiLang, warnings, household, onYear }: Props) 
   const comp = useMemo(() => compositionOption(vm), [vm]);
   const scen = useMemo(() => scenarioOption(vm), [vm]);
 
+  const toggleByName = (name: string) => {
+    const p = vm.allPositions.find((x) => x.name === name);
+    if (p) onTogglePosition(p.uid); // other legend entries (lines) only change the chart
+  };
+
   const k = vm.kpi;
   const charts = vm.output.charts;
   const scenarioNote = t('scenarioNote', { scenario: t(vm.scenario), rate: fmt.pct(vm.avgReturn) });
@@ -58,11 +64,11 @@ export function Preview({ vm, ui, uiLang, warnings, household, onYear }: Props) 
         <div>
           <div className="kicker">{t('reportKicker')}</div>
           <h1>
-            {t('reportTitle')} {vm.input.client.name}
+            {t('reportTitle')} {vm.clientName}
           </h1>
           <div className="meta">
-            {t('reportMonthly')} <b>{fmt.eur(vm.input.totalMonthly)}</b> · {t('reportOneOff')}{' '}
-            <b>{fmt.eur(vm.input.totalOneOff)}</b> · {vm.real ? t('realHint') : t('nominalHint')}
+            {t('reportMonthly')} <b>{fmt.eur(vm.amounts.monthly)}</b> · {t('reportOneOff')}{' '}
+            <b>{fmt.eur(vm.amounts.oneOff)}</b> · {vm.real ? t('realHint') : t('nominalHint')}
           </div>
         </div>
         {vm.theme.logo && <img className="logo" src={vm.theme.logo} alt="" />}
@@ -101,9 +107,21 @@ export function Preview({ vm, ui, uiLang, warnings, household, onYear }: Props) 
         <div className="warnings" role="status">
           {warnings.map((w, i) => (
             <div key={i}>
-              ⚠ {w.productId && <b>{catalog[w.productId]?.name[uiLang]}: </b>}
+              ⚠ {w.productId && <b>{vm.allPositions.find((p) => p.uid === w.uid)?.name ?? catalog[w.productId]?.name[uiLang]}: </b>}
               {ui(`warn_${w.key}`)}
             </div>
+          ))}
+        </div>
+      )}
+
+      {vm.allPositions.length > 1 && (
+        <div className="shown-products">
+          <span>{t('shownProducts')}</span>
+          {vm.allPositions.map((p) => (
+            <button key={p.uid} className={p.visible ? 'on' : ''} aria-pressed={p.visible} onClick={() => onTogglePosition(p.uid)}>
+              <span className="dot" style={{ background: p.visible ? p.color : '#C5CAD3' }} />
+              {p.name}
+            </button>
           ))}
         </div>
       )}
@@ -140,7 +158,7 @@ export function Preview({ vm, ui, uiLang, warnings, household, onYear }: Props) 
           <h2>
             {t('chartDevelopment')} <span className="sub">· {scenarioNote}</span>
           </h2>
-          <Chart option={dev} height={320} />
+          <Chart option={dev} height={320} onLegendToggle={toggleByName} />
         </div>
       )}
 
@@ -151,7 +169,7 @@ export function Preview({ vm, ui, uiLang, warnings, household, onYear }: Props) 
               <h2>
                 {t('chartAllocation')} {vm.year}
               </h2>
-              <Chart option={alloc} height={300} />
+              <Chart option={alloc} height={300} onLegendToggle={toggleByName} />
             </div>
           )}
           {charts.scenarios && (
@@ -208,6 +226,7 @@ export function Preview({ vm, ui, uiLang, warnings, household, onYear }: Props) 
       </div>
 
       <p className="disclaimer">
+        {vm.hiddenNames.length > 0 && t('partialNote', { products: vm.hiddenNames.join(', ') }) + ' '}
         {vm.real && t('reportRealNote', { inflation: fmt.pct(vm.input.inflation) }) + ' '}
         {t('disclaimer')}
       </p>

@@ -217,4 +217,17 @@ export const de: Dict = {
   field_age: 'Alter',
   field_birthDate: 'Geburtsdatum',
   field_children: 'Kind (Geburtsjahr)',
+
+  addAdult: '+ Zweite erwachsene Person',
+  secondAdult: 'Zweite erwachsene Person',
+  childBonusFor: 'Kinderzulage erhält',
+  avdOwner: 'AVD von',
+  field_partnerName: 'Zweite Person – Name',
+  field_partnerAge: 'Zweite Person – Alter',
+  warn_avdDuplicate: 'Die Förderung gibt es je Person nur einmal – bitte jeder Person nur ein AVD zuordnen.',
+
+  shownProducts: 'Angezeigte Produkte',
+  partialNote: 'Teilansicht: Zahlen und Diagramme ohne {products}.',
+  ageFromBirthDate: 'Wird aus dem Geburtsdatum berechnet',
+  field_partnerBirthDate: 'Zweite Person – Geburtsdatum',
 };

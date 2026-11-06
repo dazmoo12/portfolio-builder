@@ -35,10 +35,15 @@ export interface Product {
   source?: string;
 }
 
+/** Which adult a personal contract (AVD) belongs to. */
+export type Owner = 'primary' | 'partner';
+
 /** A product placed in the client's portfolio. */
 export interface Position {
   uid: string;
   productId: string;
+  /** AVD only: subsidies, starter bonus and payout age depend on the person. */
+  owner?: Owner;
   /** Share of the total monthly savings amount (0..1). */
   monthlyWeight: number;
   /** Share of the total one-off amount (0..1). */
@@ -47,10 +52,16 @@ export interface Position {
 
 export interface Client {
   name: string;
-  /** Age at start of the investment. */
+  /** Age, used only while no date of birth is known. */
   age: number;
+  /** Date of birth (ISO). Definitive: the age is derived from it. */
+  birthDate?: string;
   /** Birth years of children (for the AVD child bonus). */
   childrenBirthYears: number[];
+  /** Second adult in the household. */
+  partner?: { name: string; age: number; birthDate?: string };
+  /** Parent who receives the AVD child bonus (each child counts once). */
+  childBonusOwner?: Owner;
 }
 
 export interface PortfolioInput {

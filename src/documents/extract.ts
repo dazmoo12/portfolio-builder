@@ -133,10 +133,4 @@ export function findCandidates(content: DocContent, source: string): Candidate[]
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-/** Age in full years on a given date. */
-export function ageOn(birthIso: string, on = new Date()): number {
-  const b = new Date(birthIso);
-  let age = on.getFullYear() - b.getFullYear();
-  if (on.getMonth() < b.getMonth() || (on.getMonth() === b.getMonth() && on.getDate() < b.getDate())) age--;
-  return age;
-}
+export { ageOn } from '../engine/person';

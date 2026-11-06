@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { catalog, newUid, presetPositions, presets, products } from '../catalog';
-import { validateWeights } from '../engine/projection';
-import type { Position, ProductGroup } from '../engine/types';
+import { ageOn, ageToday, validBirthDate, type Person } from '../engine/person';
+import { positionOwner, validateWeights } from '../engine/projection';
+import type { Owner, Position, ProductGroup } from '../engine/types';
 import type { T, Format } from '../i18n';
 import type { AppState } from '../state';
 import type { Theme } from '../templates/themes';
@@ -36,6 +37,8 @@ function NumberField({
   min = 0,
   max,
   suffix,
+  disabled,
+  title,
 }: {
   label: string;
   value: number;
@@ -44,13 +47,16 @@ function NumberField({
   min?: number;
   max?: number;
   suffix?: string;
+  disabled?: boolean;
+  title?: string;
 }) {
   return (
-    <label className="field">
+    <label className="field" title={title}>
       <span>{label}</span>
-      <div className="input-wrap">
+      <div className={`input-wrap ${disabled ? 'readonly' : ''}`}>
         <input
           type="number"
+          disabled={disabled}
           value={Number.isFinite(value) ? value : 0}
           step={step}
           min={min}
@@ -63,6 +69,39 @@ function NumberField({
   );
 }
 
+/** Date of birth plus age. With a valid date the age is calculated and read-only. */
+function PersonDates({ t, person, onChange }: { t: T; person: Person; onChange: (p: Partial<Person>) => void }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const fixed = validBirthDate(person.birthDate);
+  return (
+    <div className="row2">
+      <label className="field">
+        <span>{t('field_birthDate')}</span>
+        <input
+          type="date"
+          min="1900-01-01"
+          max={today}
+          value={person.birthDate ?? ''}
+          onChange={(e) => {
+            const birthDate = e.target.value;
+            // keep the last valid age, so that clearing the date leaves a sensible value
+            onChange(validBirthDate(birthDate) ? { birthDate, age: ageOn(birthDate) } : { birthDate: birthDate || undefined });
+          }}
+        />
+      </label>
+      <NumberField
+        label={t('age')}
+        value={ageToday(person)}
+        min={0}
+        max={100}
+        disabled={fixed}
+        title={fixed ? t('ageFromBirthDate') : undefined}
+        onChange={(age) => onChange({ age })}
+      />
+    </div>
+  );
+}
+
 export function ClientSection({ state, t, updateInput }: Props) {
   const { client, startYear, horizonYears } = state.input;
   const setClient = (p: Partial<typeof client>) => updateInput({ client: { ...client, ...p } });
@@ -72,10 +111,8 @@ export function ClientSection({ state, t, updateInput }: Props) {
           <span>{t('clientName')}</span>
           <input value={client.name} onChange={(e) => setClient({ name: e.target.value })} />
         </label>
-        <div className="row2">
-          <NumberField label={t('age')} value={client.age} min={0} max={100} onChange={(age) => setClient({ age })} />
-          <NumberField label={t('startYear')} value={startYear} min={2025} max={2100} onChange={(v) => updateInput({ startYear: v })} />
-        </div>
+        <PersonDates t={t} person={client} onChange={setClient} />
+        <NumberField label={t('startYear')} value={startYear} min={2025} max={2100} onChange={(v) => updateInput({ startYear: v })} />
         <NumberField
           label={t('horizon')}
           value={horizonYears}
@@ -110,6 +147,39 @@ export function ClientSection({ state, t, updateInput }: Props) {
             </button>
           </div>
         </div>
+        {client.partner ? (
+          <div className="partner-box">
+            <div className="pos-head">
+              <span className="pos-name">{t('secondAdult')}</span>
+              <button
+                className="icon"
+                aria-label={t('remove')}
+                title={t('remove')}
+                onClick={() => setClient({ partner: undefined, childBonusOwner: undefined })}
+              >
+                ×
+              </button>
+            </div>
+            <label className="field">
+              <span>{t('clientName')}</span>
+              <input value={client.partner.name} onChange={(e) => setClient({ partner: { ...client.partner!, name: e.target.value } })} />
+            </label>
+            <PersonDates t={t} person={client.partner} onChange={(p) => setClient({ partner: { ...client.partner!, ...p } })} />
+            {client.childrenBirthYears.length > 0 && (
+              <label className="field">
+                <span>{t('childBonusFor')}</span>
+                <select value={client.childBonusOwner ?? 'primary'} onChange={(e) => setClient({ childBonusOwner: e.target.value as Owner })}>
+                  <option value="primary">{client.name || t('clientName')}</option>
+                  <option value="partner">{client.partner.name || t('secondAdult')}</option>
+                </select>
+              </label>
+            )}
+          </div>
+        ) : (
+          <button className="link align-start" onClick={() => setClient({ partner: { name: '', age: client.age } })}>
+            {t('addAdult')}
+          </button>
+        )}
     </Section>
   );
 }
@@ -217,6 +287,18 @@ export function PositionsSection({ state, t, fmt, theme, updateInput }: Props) {
                   ×
                 </button>
               </div>
+              {product.kind === 'avd' && i.client.partner && (
+                <label className="owner">
+                  <span>{t('avdOwner')}</span>
+                  <select
+                    value={positionOwner(i.client, p)}
+                    onChange={(e) => updateInput({ positions: i.positions.map((x) => (x.uid === p.uid ? { ...x, owner: e.target.value as Owner } : x)) })}
+                  >
+                    <option value="primary">{i.client.name || t('clientName')}</option>
+                    <option value="partner">{i.client.partner.name || t('secondAdult')}</option>
+                  </select>
+                </label>
+              )}
               {disabled ? (
                 <div className="hint">{t('noOneOff')}</div>
               ) : (

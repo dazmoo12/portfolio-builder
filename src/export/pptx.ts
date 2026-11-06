@@ -17,6 +17,8 @@ export async function exportPptx(vm: ViewModel, advisor: Advisor, household?: Ho
   const B = theme.fonts.body;
   const k = vm.kpi;
   const charts = vm.output.charts;
+  const devPositions = vm.development.positions.filter((p) => p.visible);
+  const partialNote = vm.hiddenNames.length ? t('partialNote', { products: vm.hiddenNames.join(', ') }) : '';
   const showRange = vm.output.showRange;
   const scenarioNote = t('scenarioNote', { scenario: t(vm.scenario), rate: fmt.pct(vm.avgReturn) });
   const positionsTable = () => [
@@ -34,7 +36,7 @@ export async function exportPptx(vm: ViewModel, advisor: Advisor, household?: Ho
 
   const pptx = new PptxGenJS();
   pptx.layout = 'LAYOUT_WIDE'; // 13.33 x 7.5 in
-  pptx.title = `${t('reportTitle')} ${input.client.name}`;
+  pptx.title = `${t('reportTitle')} ${vm.clientName}`;
   pptx.author = advisor.name;
   pptx.theme = { headFontFace: H, bodyFontFace: B };
 
@@ -56,7 +58,7 @@ export async function exportPptx(vm: ViewModel, advisor: Advisor, household?: Ho
     slide.addText(text, { x: 0.6, y: 0.65, w: 10.5, h: 0.7, fontFace: H, fontSize: 28, color: hex(c.text), bold: true });
   };
   const disclaimer = (slide: PptxGenJS.Slide, y = 6.25) =>
-    slide.addText(t('disclaimer'), { x: 0.6, y, w: 12.13, h: 0.55, fontFace: B, fontSize: 7, color: hex(c.muted), valign: 'top' });
+    slide.addText(`${partialNote} ${t('disclaimer')}`.trim(), { x: 0.6, y, w: 12.13, h: 0.55, fontFace: B, fontSize: 7, color: hex(c.muted), valign: 'top' });
 
   const chartFont = { catAxisLabelFontFace: B, valAxisLabelFontFace: B, legendFontFace: B, dataLabelFontFace: B };
   const valFmt = '#,##0 "€"';
@@ -69,9 +71,9 @@ export async function exportPptx(vm: ViewModel, advisor: Advisor, household?: Ho
     if (theme.logo) s.addImage({ data: theme.logo, x: 0.8, y: 0.6, w: 1.8, h: 0.8, sizing: { type: 'contain', w: 1.8, h: 0.8 } });
     s.addShape(pptx.ShapeType.rect, { x: 0.8, y: 2.45, w: 0.6, h: 0.06, fill: { color: hex(c.accent) } });
     s.addText(t('reportKicker').toUpperCase(), { x: 0.8, y: 2.6, w: 10, h: 0.4, fontFace: B, fontSize: 12, color: hex(c.accent), charSpacing: 3, bold: true });
-    s.addText(`${t('reportTitle')} ${input.client.name}`, { x: 0.8, y: 3.0, w: 11.5, h: 1.1, fontFace: H, fontSize: 40, color: on, bold: true });
+    s.addText(`${t('reportTitle')} ${vm.clientName}`, { x: 0.8, y: 3.0, w: 11.5, h: 1.1, fontFace: H, fontSize: 40, color: on, bold: true });
     s.addText(
-      `${t('reportStart')} ${input.startYear}  ·  ${t('reportDuration')} ${input.horizonYears} ${t('reportYears')}  ·  ${t('reportMonthly')} ${fmt.eur(input.totalMonthly)}  ·  ${t('reportOneOff')} ${fmt.eur(input.totalOneOff)}`,
+      `${vm.birthDates ? `${t('field_birthDate')} ${vm.birthDates}  ·  ` : ''}${t('reportStart')} ${input.startYear}  ·  ${t('reportDuration')} ${input.horizonYears} ${t('reportYears')}  ·  ${t('reportMonthly')} ${fmt.eur(vm.amounts.monthly)}  ·  ${t('reportOneOff')} ${fmt.eur(vm.amounts.oneOff)}`,
       { x: 0.8, y: 4.15, w: 11.5, h: 0.5, fontFace: B, fontSize: 14, color: on },
     );
     s.addText([{ text: `${t('reportContact')}: `, options: { bold: true } }, { text: `${advisor.name} · ${advisor.office}` }], {
@@ -171,6 +173,7 @@ export async function exportPptx(vm: ViewModel, advisor: Advisor, household?: Ho
       s.addText(fmt.eur(v), { x: 3.6, y, w: 1.8, h: 0.72, fontFace: H, fontSize: 16, bold: true, color: hex(c.text), align: 'right', valign: 'middle' });
       s.addText(k.value > 0 ? fmt.pct(v / k.value) : '–', { x: 5.4, y, w: 0.7, h: 0.72, fontFace: B, fontSize: 10, color: hex(c.muted), align: 'right', valign: 'middle' });
     });
+    if (partialNote) s.addText(partialNote, { x: 0.6, y: 6.3, w: 12.13, h: 0.4, fontFace: B, fontSize: 10, color: hex(c.muted) });
     if (charts.allocation) {
       s.addText(`${t('chartAllocation')} ${vm.year}`, { x: 6.7, y: 1.5, w: 6, h: 0.4, fontFace: H, fontSize: 16, bold: true, color: hex(c.text) });
       if (vm.output.allocationStyle === 'bar') {
@@ -219,8 +222,8 @@ export async function exportPptx(vm: ViewModel, advisor: Advisor, household?: Ho
     const combo: PptxGenJS.IChartMulti[] = [
       {
         type: pptx.ChartType.area,
-        data: vm.development.positions.map((p) => ({ name: p.name, labels, values: p.values.map(Math.round) })),
-        options: { barGrouping: 'stacked', chartColors: vm.development.positions.map((p) => hex(p.color)) },
+        data: devPositions.map((p) => ({ name: p.name, labels, values: p.values.map(Math.round) })),
+        options: { barGrouping: 'stacked', chartColors: devPositions.map((p) => hex(p.color)) },
       },
     ];
     // one line entry per scenario, because the dash style is set per chart type entry
@@ -368,13 +371,13 @@ export async function exportPptx(vm: ViewModel, advisor: Advisor, household?: Ho
       );
       y += 1.15;
     }
-    s.addText(t('disclaimer'), { x: 0.6, y: Math.max(y, 5.4), w: 12.13, h: 1.2, fontFace: B, fontSize: 9, color: hex(c.muted), valign: 'top' });
+    s.addText(`${partialNote} ${t('disclaimer')}`.trim(), { x: 0.6, y: Math.max(y, 5.4), w: 12.13, h: 1.2, fontFace: B, fontSize: 9, color: hex(c.muted), valign: 'top' });
   }
 
   return (await pptx.write({ outputType: 'blob' })) as Blob;
 }
 
 export function pptxFileName(vm: ViewModel) {
-  const safe = vm.input.client.name.replace(/[^\p{L}\p{N}-]+/gu, '_');
+  const safe = vm.clientName.replace(/[^\p{L}\p{N}-]+/gu, '_');
   return `Portfolio_${safe}_${vm.lang.toUpperCase()}.pptx`;
 }

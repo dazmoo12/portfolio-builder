@@ -13,18 +13,32 @@ export interface TemplateData {
   birthDate?: string;
   age?: number;
   childrenBirthYears?: number[];
+  partnerName?: string;
+  partnerAge?: number;
+  partnerBirthDate?: string;
   household: Household;
   count: number;
 }
 
+const toGermanDate = (iso?: string) => (iso ? iso.split('-').reverse().join('.') : '');
+
+function parseGermanDate(v: unknown) {
+  const m = String(v).match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : undefined;
+}
+
 export async function downloadTemplate(state: AppState, t: T) {
   const XLSX = await import('xlsx');
+  const { client } = state.input;
   const findAmount = (lines: Household['income'], key: string) => lines.find((l) => l.key === key)?.amount ?? '';
   const rows: (string | number)[][] = [
     [TEMPLATE_MARKER, '', ''],
     [t('field_name'), state.input.client.name, 'name'],
-    [t('field_birthDate') + ' (dd.mm.yyyy)', '', 'birthDate'],
+    [t('field_birthDate') + ' (dd.mm.yyyy)', toGermanDate(client.birthDate), 'birthDate'],
     [t('field_age'), state.input.client.age, 'age'],
+    [t('field_partnerName'), state.input.client.partner?.name ?? '', 'partnerName'],
+    [t('field_partnerBirthDate') + ' (dd.mm.yyyy)', toGermanDate(client.partner?.birthDate), 'partnerBirthDate'],
+    [t('field_partnerAge'), state.input.client.partner?.age ?? '', 'partnerAge'],
     [t('children'), state.input.client.childrenBirthYears.join(', '), 'children'],
     ['', '', ''],
     [t('income') + ' (€)', '', ''],
@@ -55,9 +69,11 @@ export function parseTemplate(tables: DocTable[]): TemplateData | null {
     if (!key || v === '' || v === undefined) continue;
     if (key === 'name') out.name = String(v);
     else if (key === 'age' && Number(v) > 0) out.age = Number(v);
+    else if (key === 'partnerName') out.partnerName = String(v);
+    else if (key === 'partnerBirthDate') out.partnerBirthDate = parseGermanDate(v);
+    else if (key === 'partnerAge' && Number(v) > 0) out.partnerAge = Number(v);
     else if (key === 'birthDate') {
-      const m = String(v).match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
-      if (m) out.birthDate = `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+      out.birthDate = parseGermanDate(v);
     } else if (key === 'children') {
       out.childrenBirthYears = String(v)
         .split(/[,;\s]+/)

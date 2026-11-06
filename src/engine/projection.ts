@@ -7,9 +7,12 @@
 //  - no taxes (shown as gross values, see disclaimer)
 
 import { AVD_RULES, annualSubsidy, starterBonusApplies } from './avd';
+import { ageAtStart } from './person';
 import {
   SCENARIOS,
   type PortfolioInput,
+  type Client,
+  type Owner,
   type Position,
   type PositionProjection,
   type Product,
@@ -20,6 +23,26 @@ import {
 } from './types';
 
 export type Catalog = Record<string, Product>;
+
+export function positionOwner(client: Client, position: Position): Owner {
+  return position.owner === 'partner' && client.partner ? 'partner' : 'primary';
+}
+
+export function ownerAge(input: PortfolioInput, owner: Owner): number {
+  const { client, startYear } = input;
+  return ageAtStart(owner === 'partner' && client.partner ? client.partner : client, startYear);
+}
+
+/** Children count for the AVD of the parent receiving the child bonus only. */
+function childYearsFor(client: Client, owner: Owner): number[] {
+  const bonusOwner = client.partner && client.childBonusOwner === 'partner' ? 'partner' : 'primary';
+  return owner === bonusOwner ? client.childrenBirthYears : [];
+}
+
+export function clientDisplayName(client: Client): string {
+  const partner = client.partner?.name.trim();
+  return partner ? `${client.name} & ${partner}` : client.name;
+}
 
 export function positionAmounts(input: PortfolioInput, position: Position, product: Product) {
   return {
@@ -40,6 +63,7 @@ export function projectPosition(
   const annualFee = product.annualFee ?? 0;
   const exit = product.exitFee ?? 0;
   const isAvd = product.kind === 'avd';
+  const owner = positionOwner(input.client, position);
 
   let value = 0;
   let paidIn = 0;
@@ -52,7 +76,7 @@ export function projectPosition(
     fees += oneOff * entry;
     value += oneOff * (1 - entry);
   }
-  if (isAvd && monthly > 0 && starterBonusApplies(input.client.age)) {
+  if (isAvd && monthly > 0 && starterBonusApplies(ownerAge(input, owner))) {
     subsidy += AVD_RULES.starterBonus;
     value += AVD_RULES.starterBonus;
   }
@@ -83,7 +107,7 @@ export function projectPosition(
     value += annualOwn * (1 - entry);
 
     if (isAvd && annualOwn > 0) {
-      const s = annualSubsidy(annualOwn, input.client.childrenBirthYears, calendarYear);
+      const s = annualSubsidy(annualOwn, childYearsFor(input.client, owner), calendarYear);
       subsidy += s;
       value += s;
     }
@@ -132,8 +156,10 @@ export function gains(p: YearPoint): number {
 }
 
 export interface Warning {
-  key: 'monthlyWeights' | 'oneOffWeights' | 'avdMax' | 'avdHorizon' | 'minMonthly' | 'minOneOff' | 'overBudget';
+  key: 'monthlyWeights' | 'oneOffWeights' | 'avdMax' | 'avdHorizon' | 'minMonthly' | 'minOneOff' | 'overBudget' | 'avdDuplicate';
   productId?: string;
+  /** Position concerned – the same product can appear once per person. */
+  uid?: string;
 }
 
 /** Checks weights and product limits; returns warnings for the UI. */
@@ -147,13 +173,19 @@ export function validateWeights(input: PortfolioInput, catalog: Catalog) {
   const oneOffSum = sum('oneOffWeight');
   if (input.totalMonthly > 0 && Math.abs(monthlySum - 1) > 0.001) warnings.push({ key: 'monthlyWeights' });
   if (input.totalOneOff > 0 && Math.abs(oneOffSum - 1) > 0.001) warnings.push({ key: 'oneOffWeights' });
+  const avdOwners = new Set<Owner>();
   for (const p of input.positions) {
     const product = catalog[p.productId];
     if (!product) continue;
     const { monthly, oneOff } = positionAmounts(input, p, product);
-    const w = (key: Warning['key']) => warnings.push({ key, productId: product.id });
+    const owner = positionOwner(input.client, p);
+    const w = (key: Warning['key']) => warnings.push({ key, productId: product.id, uid: p.uid });
     if (product.kind === 'avd' && monthly * 12 > AVD_RULES.maxAnnualContribution) w('avdMax');
-    if (product.kind === 'avd' && monthly > 0 && input.client.age + input.horizonYears > AVD_RULES.payoutLatestAge) w('avdHorizon');
+    if (product.kind === 'avd' && monthly > 0 && ownerAge(input, owner) + input.horizonYears > AVD_RULES.payoutLatestAge) w('avdHorizon');
+    if (product.kind === 'avd') {
+      if (avdOwners.has(owner)) w('avdDuplicate');
+      avdOwners.add(owner);
+    }
     if (product.minMonthly && monthly > 0 && monthly < product.minMonthly) w('minMonthly');
     if (product.minOneOff && oneOff > 0 && oneOff < product.minOneOff) w('minOneOff');
   }

@@ -38,6 +38,11 @@ export function makeFormat(lang: Lang) {
     eurShort: (n: number) => `${eurShort.format(n)} €`,
     pct: (n: number) => pct.format(n),
     num: (n: number) => n.toLocaleString(locale),
+    /** Formats an ISO date without shifting it across time zones. */
+    date: (iso: string) => {
+      const [y, m, d] = iso.split('-').map(Number);
+      return new Date(y, m - 1, d).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
+    },
   };
 }
 export type Format = ReturnType<typeof makeFormat>;

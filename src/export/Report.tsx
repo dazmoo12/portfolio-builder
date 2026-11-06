@@ -44,10 +44,15 @@ export function Report({ vm, advisor, household }: { vm: ViewModel; advisor: Adv
           </header>
           <div className="r-meta">
             <span>
-              <b>{input.client.name}</b>
+              <b>{vm.clientName}</b>
             </span>
+            {vm.birthDates && (
+              <span>
+                {t('field_birthDate')} <b>{vm.birthDates}</b>
+              </span>
+            )}
             <span>
-              {t('age')} <b>{input.client.age}</b>
+              {t('age')} <b>{vm.ageToday}</b>
             </span>
           </div>
           <HouseholdBlock vm={vm} hv={household} print />
@@ -60,14 +65,19 @@ export function Report({ vm, advisor, household }: { vm: ViewModel; advisor: Adv
           <div>
             <div className="kicker">{t('reportKicker')}</div>
             <h1>
-              {t('reportTitle')} {input.client.name}
+              {t('reportTitle')} {vm.clientName}
             </h1>
           </div>
           {vm.theme.logo && <img className="logo" src={vm.theme.logo} alt="" />}
         </header>
         <div className="r-meta">
+          {vm.birthDates && (
+            <span>
+              {t('field_birthDate')} <b>{vm.birthDates}</b>
+            </span>
+          )}
           <span>
-            {t('age')} <b>{input.client.age}</b>
+            {t('age')} <b>{vm.ageToday}</b>
           </span>
           <span>
             {t('reportStart')} <b>{input.startYear}</b>
@@ -76,10 +86,10 @@ export function Report({ vm, advisor, household }: { vm: ViewModel; advisor: Adv
             {t('reportDuration')} <b>{input.horizonYears} {t('reportYears')}</b>
           </span>
           <span>
-            {t('reportMonthly')} <b>{fmt.eur(input.totalMonthly)}</b>
+            {t('reportMonthly')} <b>{fmt.eur(vm.amounts.monthly)}</b>
           </span>
           <span>
-            {t('reportOneOff')} <b>{fmt.eur(input.totalOneOff)}</b>
+            {t('reportOneOff')} <b>{fmt.eur(vm.amounts.oneOff)}</b>
           </span>
         </div>
 
@@ -113,6 +123,8 @@ export function Report({ vm, advisor, household }: { vm: ViewModel; advisor: Adv
             </div>
           </div>
         </div>
+
+        {vm.hiddenNames.length > 0 && <p className="r-partial">{t('partialNote', { products: vm.hiddenNames.join(', ') })}</p>}
 
         <div className={charts.allocation ? 'r-grid' : ''}>
           {charts.allocation && (
@@ -236,6 +248,7 @@ export function Report({ vm, advisor, household }: { vm: ViewModel; advisor: Adv
         </div>
 
         <p className="disclaimer">
+          {vm.hiddenNames.length > 0 && t('partialNote', { products: vm.hiddenNames.join(', ') }) + ' '}
           {vm.real && t('reportRealNote', { inflation: fmt.pct(input.inflation) }) + ' '}
           {t('disclaimer')}
         </p>

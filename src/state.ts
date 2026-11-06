@@ -24,6 +24,8 @@ export interface OutputSettings {
   /** Also draw the other scenarios as lines in the development curve. */
   showRange: boolean;
   allocationStyle: 'donut' | 'bar';
+  /** Positions switched off by the advisor: figures, charts and exports leave them out. */
+  hidden: string[];
 }
 
 export const defaultOutput = (): OutputSettings => ({
@@ -31,6 +33,7 @@ export const defaultOutput = (): OutputSettings => ({
   scenario: 'neutral',
   showRange: false,
   allocationStyle: 'donut',
+  hidden: [],
 });
 
 export interface AppState {
@@ -56,7 +59,7 @@ export function defaultState(): AppState {
     version: 1,
     input: {
       // fictional demo client
-      client: { name: 'Anna Beispiel', age: 32, childrenBirthYears: [2021] },
+      client: { name: 'Anna Beispiel', age: 32, birthDate: '1994-03-15', childrenBirthYears: [2021] },
       startYear: Math.max(currentYear + 1, 2027),
       horizonYears: 35,
       totalMonthly: 300,
@@ -101,7 +104,7 @@ export function newClientState(prev: AppState, clientName = ''): AppState {
   return {
     ...fresh,
     advisor: defaultAdvisor() ?? prev.advisor,
-    output: prev.output,
+    output: { ...prev.output, hidden: [] },
     uiLang: prev.uiLang,
     reportLang: prev.reportLang,
     themeId: prev.themeId,

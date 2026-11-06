@@ -56,6 +56,8 @@ export function developmentOption(vm: ViewModel, o: Opts = {}): EChartsOption {
   const d = vm.development;
   const others = vm.output.showRange ? SCENARIOS.filter((sc) => sc !== vm.scenario) : [];
   const totalName = (sc: ScenarioKey) => vm.t('totalScenario', { scenario: vm.t(sc) });
+  // on screen hidden products stay in the legend so they can be switched back on; print leaves them out
+  const list = o.compact ? d.positions.filter((p) => p.visible) : d.positions;
   return {
     animation: b.animation,
     textStyle: b.textStyle,
@@ -66,8 +68,9 @@ export function developmentOption(vm: ViewModel, o: Opts = {}): EChartsOption {
       ...b.legend,
       type: 'plain',
       itemWidth: 18,
+      selected: Object.fromEntries(d.positions.map((p) => [p.name, p.visible])),
       data: [
-        ...d.positions.map((p) => ({ name: p.name, icon: 'roundRect' })),
+        ...list.map((p) => ({ name: p.name, icon: 'roundRect' })),
         ...others.map((sc) => ({ name: totalName(sc), icon: SCENARIO_LINE[sc].icon })),
         { name: vm.t('paidInLine'), icon: ICON_SOLID },
       ],
@@ -85,7 +88,7 @@ export function developmentOption(vm: ViewModel, o: Opts = {}): EChartsOption {
       axisLabel: { ...b.axisCommon.axisLabel, formatter: (v: number) => vm.fmt.eurShort(v) },
     },
     series: [
-      ...d.positions.map((p) => ({
+      ...list.map((p) => ({
         name: p.name,
         type: 'line' as const,
         stack: 'total',
@@ -94,7 +97,6 @@ export function developmentOption(vm: ViewModel, o: Opts = {}): EChartsOption {
         lineStyle: { width: 1, color: '#FFFFFF' },
         itemStyle: { color: p.color },
         areaStyle: { color: p.color, opacity: 0.85 },
-        emphasis: { focus: 'series' as const },
       })),
       ...others.map((sc) => ({
         name: totalName(sc),
@@ -159,10 +161,14 @@ export function allocationOption(vm: ViewModel, o: Opts = {}): EChartsOption {
       ],
     };
   }
+  // hidden products keep a zero slice on screen so that their legend entry stays clickable
+  const pieItems = o.compact
+    ? vm.positions
+    : vm.allPositions.map((p) => ({ ...p, value: vm.positions.find((x) => x.uid === p.uid)?.value ?? 0 }));
   return {
     animation: b.animation,
     textStyle: b.textStyle,
-    legend: { ...b.legend, type: 'plain' },
+    legend: { ...b.legend, type: 'plain', selected: Object.fromEntries(vm.allPositions.map((p) => [p.name, p.visible])) },
     tooltip: {
       ...b.tooltip,
       trigger: 'item',
@@ -172,19 +178,20 @@ export function allocationOption(vm: ViewModel, o: Opts = {}): EChartsOption {
       text: vm.fmt.eur(vm.kpi.value),
       subtext: String(vm.year),
       left: 'center',
-      top: o.compact ? '33%' : '35%',
+      top: o.compact ? '27%' : '35%',
       textStyle: { fontFamily: vm.theme.fonts.heading, fontSize: o.compact ? 14 : 18, color: c.text },
       subtextStyle: { color: c.muted, fontSize: 11 },
     },
     series: [
       {
         type: 'pie',
-        radius: ['50%', '74%'],
-        center: ['50%', '42%'],
+        // print card is narrow: the legend wraps, so the ring sits higher and smaller
+        radius: o.compact ? ['40%', '60%'] : ['50%', '74%'],
+        center: ['50%', o.compact ? '35%' : '42%'],
         padAngle: 1,
         itemStyle: { borderColor: '#FFFFFF', borderWidth: 2, borderRadius: 3 },
         label: { show: false },
-        data: vm.positions.map((p) => ({ name: p.name, value: Math.max(p.value, 0), itemStyle: { color: p.color } })),
+        data: pieItems.map((p) => ({ name: p.name, value: Math.max(p.value, 0), itemStyle: { color: p.color } })),
       },
     ],
   };

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { baseSubsidy, annualSubsidy } from './avd';
 import { summarizeHousehold } from './household';
-import { project, type Catalog } from './projection';
+import { ageAtStart, ageOn, validBirthDate } from './person';
+import { clientDisplayName, project, validateWeights, type Catalog } from './projection';
 import type { PortfolioInput, Product } from './types';
 
 const avd: Product = {
@@ -54,6 +55,67 @@ describe('projection matches existing AVD offers', () => {
     expect(Math.round(t.value)).toBe(12343);
     expect(t.paidIn).toBe(5760);
     expect(t.subsidy).toBe(2520);
+  });
+});
+
+describe('second adult', () => {
+  const base = avdOnly(150, 24, 42);
+  const two = (over: Partial<PortfolioInput['client']> = {}): PortfolioInput => ({
+    ...base,
+    client: { ...base.client, childrenBirthYears: [2027], partner: { name: 'Max', age: 40 }, ...over },
+    totalMonthly: 300,
+    positions: [
+      { uid: 'a', productId: 'avd', monthlyWeight: 0.5, oneOffWeight: 0 },
+      { uid: 'b', productId: 'avd', monthlyWeight: 0.5, oneOffWeight: 0, owner: 'partner' },
+    ],
+  });
+  const subsidy = (input: PortfolioInput) => project(input, catalog).neutral.positions.map((p) => p.series[1].subsidy);
+
+  it('gives each person their own AVD subsidy and starter bonus by their own age', () => {
+    // client (24): 200 starter + 540 + 300 child; partner (40): 540 only
+    expect(subsidy(two())).toEqual([1040, 540]);
+  });
+
+  it('counts a child only for the parent receiving the child bonus', () => {
+    expect(subsidy(two({ childBonusOwner: 'partner' }))).toEqual([740, 840]);
+  });
+
+  it('falls back to the client when the second adult is removed', () => {
+    const input = { ...two(), client: { ...two().client, partner: undefined, childBonusOwner: 'partner' as const } };
+    expect(subsidy(input)).toEqual([1040, 1040]);
+    expect(validateWeights(input, catalog).warnings.map((w) => w.key)).toContain('avdDuplicate');
+  });
+
+  it('names both adults', () => {
+    expect(clientDisplayName(two().client)).toBe('Test & Max');
+    expect(clientDisplayName(base.client)).toBe('Test');
+  });
+});
+
+describe('date of birth', () => {
+  const on = (iso: string) => new Date(`${iso}T12:00:00`);
+
+  it('computes the exact age around the birthday', () => {
+    expect(ageOn('1994-02-12', on('2026-02-11'))).toBe(31);
+    expect(ageOn('1994-02-12', on('2026-02-12'))).toBe(32);
+  });
+
+  it('takes precedence over the age field, counted at the start of the investment', () => {
+    expect(ageAtStart({ age: 50, birthDate: '1994-02-12' }, 2027)).toBe(32);
+    expect(ageAtStart({ age: 50 }, 2027)).toBe(50);
+  });
+
+  it('ignores half-typed and future dates', () => {
+    expect(ageAtStart({ age: 50, birthDate: '0199-02-12' }, 2027)).toBe(50);
+    expect(validBirthDate('2999-01-01', on('2026-11-06'))).toBe(false);
+    expect(validBirthDate('', on('2026-11-06'))).toBe(false);
+  });
+
+  it('decides the starter bonus', () => {
+    const input = (birthDate: string) => ({ ...avdOnly(150, 50, 1), client: { name: 'T', age: 50, birthDate, childrenBirthYears: [] } });
+    const bonus = (birthDate: string) => project(input(birthDate), catalog).neutral.total[0].subsidy;
+    expect(bonus('2002-02-12')).toBe(200); // 24 on 1 Jan 2027
+    expect(bonus('2001-12-31')).toBe(0); // 25 on 1 Jan 2027
   });
 });
 

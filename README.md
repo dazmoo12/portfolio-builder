@@ -2,7 +2,7 @@
 
 Browser tool for preparing client portfolios across pension plans (AVD), DVAG portfolios / funds and precious metals.
 It has a live preview with a time slider, three return scenarios, an inflation toggle, templates, and PDF + PowerPoint export (native, editable charts).
-Languages: DE / EN / PT, with UI language and report language chosen separately.
+Languages: DE / EN / PT. The language switch changes interface and document together; the export section can set a different document language.
 
 **Household budget:** monthly net income and expenses, shown as the first page of the preview, PDF and PowerPoint. It includes the free amount, the proposed savings and the remaining reserve; the page can be switched off per client.
 
@@ -16,6 +16,12 @@ Languages: DE / EN / PT, with UI language and report language chosen separately.
 - The allocation can be a donut or bars.
 - Choose the **displayed scenario**: all figures and the curve use it, labelled with its average return. Optionally, the other scenarios are drawn as lines.
 - The settings apply to the preview, PDF and PowerPoint alike.
+
+**Product selection:** clicking a product in a chart legend, or on the chips above the figures, switches it on or off. All figures, charts and exports then cover the shown products only, and PDF/PowerPoint state which products are left out.
+
+**Date of birth:** definitive when entered, for both adults: the age is calculated and locked, and drives the starter bonus, payout-age check and output. Without a date, the age field is used. Ages in the projection count from 1 January of the start year.
+
+**Second adult:** a client can have a second adult (name, date of birth or age). Each AVD is assigned to one person, because subsidies, starter bonus and payout age are personal; a child counts for one parent only ("Kinderzulage erhält").
 
 **Advisor profiles:** save contact details once and pick a default. "+ New client" starts the next client with that advisor and the same output settings.
 

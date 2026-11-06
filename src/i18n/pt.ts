@@ -217,4 +217,17 @@ export const pt: Dict = {
   field_age: 'Idade',
   field_birthDate: 'Data de nascimento',
   field_children: 'Filho (ano de nascimento)',
+
+  addAdult: '+ Segundo adulto',
+  secondAdult: 'Segundo adulto',
+  childBonusFor: 'Bónus por filho para',
+  avdOwner: 'AVD de',
+  field_partnerName: 'Segundo adulto – nome',
+  field_partnerAge: 'Segundo adulto – idade',
+  warn_avdDuplicate: 'O subsídio aplica-se uma vez por pessoa – atribua apenas uma AVD a cada pessoa.',
+
+  shownProducts: 'Produtos apresentados',
+  partialNote: 'Vista parcial: valores e gráficos sem {products}.',
+  ageFromBirthDate: 'Calculada a partir da data de nascimento',
+  field_partnerBirthDate: 'Segundo adulto – data de nascimento',
 };
