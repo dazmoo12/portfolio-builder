@@ -1,8 +1,8 @@
 // View model shared by the live preview, the PDF report and the PowerPoint export.
 // It turns a projection into display-ready numbers for one selected year.
 
-import { ageAtStart, ageToday, validBirthDate } from '../engine/person';
-import { clientDisplayName, gains, positionOwner, toReal } from '../engine/projection';
+import { adultOwner, ageAtStart, ageToday, clientPeople, validBirthDate } from '../engine/person';
+import { clientDisplayName, gains, positionTiming, toReal } from '../engine/projection';
 import { SCENARIOS, type Lang, type PortfolioInput, type PositionProjection, type Product, type Projection, type ScenarioKey, type YearPoint } from '../engine/types';
 import { makeFormat, makeT, type Format, type T } from '../i18n';
 import type { OutputSettings } from '../state';
@@ -12,6 +12,8 @@ export interface PositionView {
   uid: string;
   product: Product;
   name: string;
+  /** Start and term, e.g. "11/2026 · 12 Jahre". */
+  timing: string;
   color: string;
   monthly: number;
   oneOff: number;
@@ -40,6 +42,8 @@ export interface ViewModel {
   ageToday: string;
   /** Dates of birth for the output; empty if none is known. */
   birthDates: string;
+  /** Explains the values of contracts that end before the timeline does. */
+  termNote: string;
   ageAtYear: string;
   years: number[];
   /** The positions shown; everything below refers to these only. */
@@ -81,8 +85,8 @@ export function buildViewModel(
   const seen = new Map<string, number>();
   const nameOf = (p: PositionProjection) => {
     let name = p.product.name[lang];
-    if (p.product.kind === 'avd' && client.partner) {
-      const person = positionOwner(client, p.position) === 'partner' ? client.partner.name : client.name;
+    if (p.product.kind === 'avd' && client.adults.length > 0) {
+      const person = adultOwner(client, p.position.owner)?.name ?? client.name;
       name += ` (${person.trim().split(/\s+/)[0] || t('secondAdult')})`;
     }
     const n = (seen.get(name) ?? 0) + 1;
@@ -103,7 +107,9 @@ export function buildViewModel(
 
   const positions: PositionView[] = shown.map(({ p, name, color }) => {
     const s: YearPoint = p.series[yi];
+    const timing = positionTiming(input, p.position);
     return {
+      timing: `${String(timing.month).padStart(2, '0')}/${timing.year} · ${timing.years} ${t('reportYears')}`,
       uid: p.position.uid,
       product: p.product,
       name,
@@ -129,12 +135,17 @@ export function buildViewModel(
   let wSum = 0;
   let rSum = 0;
   for (const { p } of shown) {
-    const w = p.monthly * 12 * input.horizonYears + p.oneOff;
+    const w = p.monthly * 12 * positionTiming(input, p.position).years + p.oneOff;
     wSum += w;
     rSum += w * p.product.returns[scenario];
   }
 
-  const people = client.partner ? [client, client.partner] : [client];
+  const people = clientPeople(client);
+  const lastYear = input.startYear + input.horizonYears;
+  const endsEarly = shown.some(({ p }) => {
+    const c = positionTiming(input, p.position);
+    return c.year + c.years < lastYear;
+  });
   const ages = (add: number) => people.map((p) => ageAtStart(p, input.startYear) + add).join(' / ');
   const dates = people.map((p) => (validBirthDate(p.birthDate) ? fmt.date(p.birthDate) : '–'));
 
@@ -151,6 +162,7 @@ export function buildViewModel(
     clientName: clientDisplayName(client),
     ageToday: people.map((p) => ageToday(p)).join(' / '),
     birthDates: dates.some((d) => d !== '–') ? dates.join(' / ') : '',
+    termNote: endsEarly ? t('reportTermNote') : '',
     yearIndex: yi,
     year: input.startYear + yi,
     ageAtYear: ages(yi),

@@ -1,6 +1,8 @@
 // Ages of the adults. A date of birth is definitive: if one is known, the age is always
 // derived from it; the plain age field only applies while no date is entered.
 
+import type { Adult, Child, Client } from './types';
+
 export interface Person {
   age: number;
   /** ISO date (yyyy-mm-dd). */
@@ -27,4 +29,21 @@ export function ageToday(p: Person, today = new Date()): number {
 /** Age when the investment starts (1 January of the start year); the projection counts from here. */
 export function ageAtStart(p: Person, startYear: number): number {
   return validBirthDate(p.birthDate) ? ageOn(p.birthDate, new Date(startYear, 0, 1)) : p.age;
+}
+
+/** Age at the start of a contract. Without a date of birth, later contracts add the years until then. */
+export function ageAtContractStart(p: Person, year: number, month: number, timelineStart: number): number {
+  return validBirthDate(p.birthDate) ? ageOn(p.birthDate, new Date(year, month - 1, 1)) : p.age + (year - timelineStart);
+}
+
+export const clientPeople = (client: Client): (Person & { name: string; id?: string })[] => [client, ...client.adults];
+
+export const missingBirthDate = (client: Client) => clientPeople(client).some((p) => !validBirthDate(p.birthDate));
+
+export function childBirthYear(c: Child): number | undefined {
+  return validBirthDate(c.birthDate) ? Number(c.birthDate.slice(0, 4)) : c.birthYear;
+}
+
+export function adultOwner(client: Client, id: string | undefined): Adult | undefined {
+  return client.adults.find((a) => a.id === id);
 }

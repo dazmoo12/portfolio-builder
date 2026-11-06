@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { applyCandidate } from '../documents/apply';
 import { findCandidates, type Candidate } from '../documents/extract';
-import { ocr, pdfToCanvases, readDoc, type ClientDoc, type DocContent, type DocKind } from '../documents/readers';
+import { ocrDoc, onOcrDone, readDocCached, type ClientDoc, type DocContent, type DocKind } from '../documents/readers';
 import type { Format, T, TKey } from '../i18n';
 import type { AppState } from '../state';
 
@@ -38,7 +38,7 @@ export function DocumentsView({ t, fmt, docs, state, setState }: Props) {
     let cancelled = false;
     setBusy(t('docReading'));
     setSheet(0);
-    readDoc(doc)
+    readDocCached(doc)
       .then((content) => !cancelled && setLoaded((l) => ({ ...l, [doc.id]: { content, candidates: findCandidates(content, doc.path) } })))
       .catch((e) => !cancelled && setLoaded((l) => ({ ...l, [doc.id]: { error: String(e?.message ?? e), candidates: [] } })))
       .finally(() => !cancelled && setBusy(''));
@@ -47,15 +47,17 @@ export function DocumentsView({ t, fmt, docs, state, setState }: Props) {
     };
   }, [doc, loaded, t]);
 
+  // the background search may finish reading a document while it is on screen
+  useEffect(
+    () => onOcrDone((d, content) => setLoaded((l) => ({ ...l, [d.id]: { content, candidates: findCandidates(content, d.path) } }))),
+    [],
+  );
+
   const runOcr = async () => {
     if (!doc || !cur?.content) return;
     try {
       setBusy(t('docOcrRunning', { progress: '' }));
-      const file = await doc.getFile();
-      const sources = doc.kind === 'pdf' ? await pdfToCanvases(file) : [file];
-      const text = await ocr(sources, (p) => setBusy(t('docOcrRunning', { progress: `${Math.round(p * 100)} %` })));
-      const content = { ...cur.content, text: [cur.content.text, text].filter(Boolean).join('\n\n'), scanned: false };
-      setLoaded((l) => ({ ...l, [doc.id]: { content, candidates: findCandidates(content, doc.path) } }));
+      await ocrDoc(doc, cur.content, (p) => setBusy(t('docOcrRunning', { progress: `${Math.round(p * 100)} %` })));
     } catch (e) {
       setLoaded((l) => ({ ...l, [doc.id]: { ...l[doc.id], error: String((e as Error)?.message ?? e) } }));
     } finally {
@@ -69,7 +71,7 @@ export function DocumentsView({ t, fmt, docs, state, setState }: Props) {
         return `${t(c.target.side === 'income' ? 'income' : 'expenses')} · ${t(c.target.key as TKey)}`;
       case 'birthDate':
         return t('field_birthDate');
-      case 'childBirthYear':
+      case 'childBirth':
         return t('field_children');
       case 'name':
         return t('field_name');
@@ -78,7 +80,7 @@ export function DocumentsView({ t, fmt, docs, state, setState }: Props) {
   const valueText = (c: Candidate) =>
     c.target.type === 'household'
       ? `${fmt.eur(Number(c.value))} / ${t('monthly').toLowerCase()}`
-      : c.target.type === 'birthDate'
+      : c.target.type === 'birthDate' || c.target.type === 'childBirth'
         ? new Date(String(c.value)).toLocaleDateString()
         : String(c.value);
 
@@ -89,6 +91,7 @@ export function DocumentsView({ t, fmt, docs, state, setState }: Props) {
     setApplied((a) => new Set([...a, ...cs.map((c) => c.id)]));
   };
 
+  const { adults } = state.input.client;
   const open = cur?.candidates.filter((c) => !applied.has(c.id)) ?? [];
   const canOcr = doc && (doc.kind === 'image' || (doc.kind === 'pdf' && cur?.content?.scanned));
   const tables = cur?.content?.tables;
@@ -192,9 +195,19 @@ export function DocumentsView({ t, fmt, docs, state, setState }: Props) {
                         {applied.has(c.id) ? (
                           <span className="ok-text">✓ {t('docApplied')}</span>
                         ) : (
-                          <button className="btn ghost" onClick={() => apply([c])}>
-                            {t('docApply')}
-                          </button>
+                          <div className="upload-row">
+                            {c.target.type === 'birthDate' && adults.length > 0 ? (
+                              [{ id: undefined, name: state.input.client.name }, ...adults].map((p) => (
+                                <button key={p.id ?? 'primary'} className="btn ghost" onClick={() => apply([{ ...c, target: { type: 'birthDate', person: p.id } }])}>
+                                  {t('docApplyFor', { name: p.name || t('secondAdult') })}
+                                </button>
+                              ))
+                            ) : (
+                              <button className="btn ghost" onClick={() => apply([c])}>
+                                {t('docApply')}
+                              </button>
+                            )}
+                          </div>
                         )}
                       </li>
                     ))}

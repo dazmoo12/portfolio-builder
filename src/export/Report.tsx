@@ -152,7 +152,10 @@ export function Report({ vm, advisor, household }: { vm: ViewModel; advisor: Adv
                     <td>
                       <span className="name-cell">
                         <span className="dot" style={{ background: p.color }} />
-                        {p.name}
+                        <span>
+                          {p.name}
+                          <span className="small muted block">{p.timing}</span>
+                        </span>
                       </span>
                     </td>
                     <td>{fmt.eur(p.monthly)}</td>
@@ -249,6 +252,7 @@ export function Report({ vm, advisor, household }: { vm: ViewModel; advisor: Adv
 
         <p className="disclaimer">
           {vm.hiddenNames.length > 0 && t('partialNote', { products: vm.hiddenNames.join(', ') }) + ' '}
+          {vm.termNote && vm.termNote + ' '}
           {vm.real && t('reportRealNote', { inflation: fmt.pct(input.inflation) }) + ' '}
           {t('disclaimer')}
         </p>

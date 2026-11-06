@@ -16,10 +16,11 @@ export const presets = presetsJson.presets as Preset[];
 let uidCounter = 0;
 export const newUid = () => `p${Date.now().toString(36)}${(uidCounter++).toString(36)}`;
 
-export function presetPositions(preset: Preset): Position[] {
+export function presetPositions(preset: Preset, timing: { start: string; years: number }): Position[] {
   return preset.positions.map((p) => ({
     uid: newUid(),
     productId: p.productId,
+    ...timing,
     monthlyWeight: p.monthly,
     oneOffWeight: p.oneOff,
   }));

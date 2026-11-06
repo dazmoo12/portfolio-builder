@@ -3,9 +3,10 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { defaultAdvisor } from './advisors';
-import { presetPositions, presets } from './catalog';
+import { newUid, presetPositions, presets } from './catalog';
 import type { Household } from './engine/household';
-import type { Lang, PortfolioInput, ScenarioKey } from './engine/types';
+import { positionTiming, syncTimeline } from './engine/projection';
+import type { Adult, Child, Client, Lang, PortfolioInput, ScenarioKey } from './engine/types';
 
 export interface Advisor {
   name: string;
@@ -52,21 +53,21 @@ export interface AppState {
   yearIndex: number;
 }
 
-const currentYear = new Date().getFullYear();
+const firstYear = Math.max(new Date().getFullYear() + 1, 2027);
 
 export function defaultState(): AppState {
   return {
     version: 1,
     input: {
       // fictional demo client
-      client: { name: 'Anna Beispiel', age: 32, birthDate: '1994-03-15', childrenBirthYears: [2021] },
-      startYear: Math.max(currentYear + 1, 2027),
+      client: { name: 'Anna Beispiel', age: 32, birthDate: '1994-03-15', children: [{ id: 'c1', birthDate: '2021-06-10' }], adults: [] },
+      startYear: firstYear,
       horizonYears: 35,
       totalMonthly: 300,
       totalOneOff: 10000,
       dynamicIncrease: 0,
       inflation: 0.02,
-      positions: presetPositions(presets.find((p) => p.id === 'balance')!),
+      positions: presetPositions(presets.find((p) => p.id === 'balance')!, { start: `${firstYear}-01`, years: 35 }),
     },
     // fictional demo household
     household: {
@@ -109,11 +110,32 @@ export function newClientState(prev: AppState, clientName = ''): AppState {
     reportLang: prev.reportLang,
     themeId: prev.themeId,
     household: { income: [], expenses: [] },
-    input: { ...fresh.input, client: { name: clientName, age: fresh.input.client.age, childrenBirthYears: [] } },
+    input: { ...fresh.input, client: { name: clientName, age: fresh.input.client.age, children: [], adults: [] } },
   };
 }
 
 const KEY = 'portfolio-builder.state.v1';
+
+type OldClient = Partial<Client> & { childrenBirthYears?: number[]; partner?: Omit<Adult, 'id'> };
+
+/** Saved clients had one optional partner and children's birth years only. */
+function migrateClient(c: OldClient): Client {
+  const { childrenBirthYears, partner, ...client } = c;
+  const children: Child[] = c.children ?? (childrenBirthYears ?? []).map((birthYear) => ({ id: newUid(), birthYear }));
+  // the id 'partner' keeps saved AVD assignments valid
+  const adults: Adult[] = c.adults ?? (partner ? [{ ...partner, id: 'partner' }] : []);
+  return { ...client, children, adults } as Client;
+}
+
+/** Saved portfolios had one start and duration for all products. */
+function migrateInput(input: PortfolioInput): PortfolioInput {
+  const client = migrateClient(input.client as OldClient);
+  const positions = input.positions.map((p) => {
+    const t = positionTiming(input, p);
+    return { ...p, start: p.start ?? `${t.year}-01`, years: t.years };
+  });
+  return syncTimeline({ ...input, client, positions });
+}
 
 /** Accepts saved states/files from older prototype versions by filling in missing fields. */
 export function migrateState(raw: unknown): AppState | null {
@@ -123,6 +145,7 @@ export function migrateState(raw: unknown): AppState | null {
   return {
     ...d,
     ...s,
+    input: migrateInput(s.input),
     household: s.household ?? { income: [], expenses: [] },
     includeHousehold: s.includeHousehold ?? !!s.household,
     output: { ...defaultOutput(), ...s.output, charts: { ...defaultOutput().charts, ...s.output?.charts } },
@@ -153,7 +176,7 @@ export function useAppState() {
   const updateInput = useCallback(
     (patch: Partial<PortfolioInput>) =>
       setState((s) => {
-        const input = { ...s.input, ...patch };
+        const input = syncTimeline({ ...s.input, ...patch });
         // keep the selected year inside the horizon; follow the end when it was at the end
         const atEnd = s.yearIndex >= s.input.horizonYears;
         const yearIndex = atEnd ? input.horizonYears : Math.min(s.yearIndex, input.horizonYears);

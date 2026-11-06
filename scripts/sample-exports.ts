@@ -18,10 +18,10 @@ const couple = {
   ...s,
   input: {
     ...s.input,
-    client: { ...s.input.client, partner: { name: 'Max Beispiel', age: 34 } },
+    client: { ...s.input.client, adults: [{ id: 'max', name: 'Max Beispiel', age: 34 }] },
     positions: [
       ...s.input.positions.map((p) => (p.productId === 'avd' ? { ...p, monthlyWeight: 0.2 } : p)),
-      { uid: 'avd-max', productId: 'avd', owner: 'partner' as const, monthlyWeight: 0.2, oneOffWeight: 0 },
+      { uid: 'avd-max', productId: 'avd', owner: 'max', monthlyWeight: 0.2, oneOffWeight: 0, start: '2030-01', years: 20 },
     ],
   },
 };

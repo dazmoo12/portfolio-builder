@@ -1,6 +1,7 @@
 // Excel client-data template: a fixed sheet with machine-readable keys in column C,
 // so a filled-in file imports exactly – in any language.
 
+import type { Child } from '../engine/types';
 import { EXPENSE_KEYS, INCOME_KEYS, type Household } from '../engine/household';
 import type { T, TKey } from '../i18n';
 import type { AppState } from '../state';
@@ -12,10 +13,9 @@ export interface TemplateData {
   name?: string;
   birthDate?: string;
   age?: number;
-  childrenBirthYears?: number[];
-  partnerName?: string;
-  partnerAge?: number;
-  partnerBirthDate?: string;
+  children?: Omit<Child, 'id'>[];
+  /** Further adults, in template order. */
+  adults: { name?: string; age?: number; birthDate?: string }[];
   household: Household;
   count: number;
 }
@@ -36,10 +36,15 @@ export async function downloadTemplate(state: AppState, t: T) {
     [t('field_name'), state.input.client.name, 'name'],
     [t('field_birthDate') + ' (dd.mm.yyyy)', toGermanDate(client.birthDate), 'birthDate'],
     [t('field_age'), state.input.client.age, 'age'],
-    [t('field_partnerName'), state.input.client.partner?.name ?? '', 'partnerName'],
-    [t('field_partnerBirthDate') + ' (dd.mm.yyyy)', toGermanDate(client.partner?.birthDate), 'partnerBirthDate'],
-    [t('field_partnerAge'), state.input.client.partner?.age ?? '', 'partnerAge'],
-    [t('children'), state.input.client.childrenBirthYears.join(', '), 'children'],
+    ...[0, 1, 2].flatMap((i) => {
+      const a = client.adults[i];
+      return [
+        [`${t('field_partnerName')} (${i + 1})`, a?.name ?? '', `adult${i}Name`],
+        [`${t('field_partnerBirthDate')} (${i + 1}) (dd.mm.yyyy)`, toGermanDate(a?.birthDate), `adult${i}BirthDate`],
+        [`${t('field_partnerAge')} (${i + 1})`, a?.age ?? '', `adult${i}Age`],
+      ];
+    }),
+    [t('children') + ' (dd.mm.yyyy, ...)', client.children.map((c) => toGermanDate(c.birthDate) || c.birthYear).join(', '), 'children'],
     ['', '', ''],
     [t('income') + ' (€)', '', ''],
     ...INCOME_KEYS.map((k) => [t(k as TKey), findAmount(state.household.income, k), k]),
@@ -62,23 +67,31 @@ export function isTemplate(tables: DocTable[] | undefined) {
 export function parseTemplate(tables: DocTable[]): TemplateData | null {
   const sheet = tables.find((tb) => tb.rows[0]?.[0] === TEMPLATE_MARKER);
   if (!sheet) return null;
-  const out: TemplateData = { household: { income: [], expenses: [] }, count: 0 };
+  const out: TemplateData = { adults: [], household: { income: [], expenses: [] }, count: 0 };
   for (const row of sheet.rows) {
     const key = String(row[2] ?? '').trim();
     const v = row[1];
     if (!key || v === '' || v === undefined) continue;
+    // "partner…" are the keys of templates filled in before several adults were possible
+    const adultKey = key.match(/^adult(\d)(Name|BirthDate|Age)$/) ?? key.match(/^partner()(Name|BirthDate|Age)$/);
     if (key === 'name') out.name = String(v);
     else if (key === 'age' && Number(v) > 0) out.age = Number(v);
-    else if (key === 'partnerName') out.partnerName = String(v);
-    else if (key === 'partnerBirthDate') out.partnerBirthDate = parseGermanDate(v);
-    else if (key === 'partnerAge' && Number(v) > 0) out.partnerAge = Number(v);
+    else if (adultKey) {
+      const a = (out.adults[Number(adultKey[1] ?? 0)] ??= {});
+      if (adultKey[2] === 'Name') a.name = String(v);
+      else if (adultKey[2] === 'BirthDate') a.birthDate = parseGermanDate(v);
+      else if (Number(v) > 0) a.age = Number(v);
+    }
     else if (key === 'birthDate') {
       out.birthDate = parseGermanDate(v);
     } else if (key === 'children') {
-      out.childrenBirthYears = String(v)
+      out.children = String(v)
         .split(/[,;\s]+/)
-        .map(Number)
-        .filter((y) => y > 1900 && y < 2100);
+        .map((c) => {
+          const birthDate = parseGermanDate(c);
+          return birthDate ? { birthDate } : { birthYear: Number(c) };
+        })
+        .filter((c) => c.birthDate || (c.birthYear! > 1900 && c.birthYear! < 2100));
     } else if ((INCOME_KEYS as readonly string[]).includes(key) && Number(v) > 0) {
       out.household.income.push({ id: `t-${key}`, key, amount: Number(v) });
     } else if ((EXPENSE_KEYS as readonly string[]).includes(key) && Number(v) > 0) {

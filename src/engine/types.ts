@@ -35,8 +35,8 @@ export interface Product {
   source?: string;
 }
 
-/** Which adult a personal contract (AVD) belongs to. */
-export type Owner = 'primary' | 'partner';
+/** Which adult a personal contract (AVD) belongs to: 'primary' or the id of a further adult. */
+export type Owner = string;
 
 /** A product placed in the client's portfolio. */
 export interface Position {
@@ -44,10 +44,29 @@ export interface Position {
   productId: string;
   /** AVD only: subsidies, starter bonus and payout age depend on the person. */
   owner?: Owner;
+  /** First month of the contract (yyyy-mm). */
+  start?: string;
+  /** Contract term in years. */
+  years?: number;
   /** Share of the total monthly savings amount (0..1). */
   monthlyWeight: number;
   /** Share of the total one-off amount (0..1). */
   oneOffWeight: number;
+}
+
+export interface Adult {
+  id: string;
+  name: string;
+  age: number;
+  birthDate?: string;
+}
+
+export interface Child {
+  id: string;
+  /** ISO date; definitive if known. */
+  birthDate?: string;
+  /** Used only while no date of birth is known. */
+  birthYear?: number;
 }
 
 export interface Client {
@@ -56,16 +75,17 @@ export interface Client {
   age: number;
   /** Date of birth (ISO). Definitive: the age is derived from it. */
   birthDate?: string;
-  /** Birth years of children (for the AVD child bonus). */
-  childrenBirthYears: number[];
-  /** Second adult in the household. */
-  partner?: { name: string; age: number; birthDate?: string };
+  /** Children (for the AVD child bonus). */
+  children: Child[];
+  /** Further adults in the household, e.g. a partner or a grown-up child. */
+  adults: Adult[];
   /** Parent who receives the AVD child bonus (each child counts once). */
   childBonusOwner?: Owner;
 }
 
 export interface PortfolioInput {
   client: Client;
+  /** Timeline of the whole portfolio, derived from the contracts (see syncTimeline). */
   startYear: number;
   horizonYears: number;
   totalMonthly: number;

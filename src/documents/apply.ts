@@ -2,8 +2,10 @@
 
 import { newUid } from '../catalog';
 import type { BudgetLine } from '../engine/household';
+import { ageOn } from '../engine/person';
+import type { Adult, Client } from '../engine/types';
 import type { AppState } from '../state';
-import { ageOn, type Candidate } from './extract';
+import type { Candidate } from './extract';
 import type { TemplateData } from './template';
 
 /** Sets a budget line by category key (replaces the amount if the category exists). */
@@ -13,22 +15,35 @@ function setLine(lines: BudgetLine[], key: string, amount: number): BudgetLine[]
     : [...lines, { id: newUid(), key, amount }];
 }
 
+function addChild(client: Client, birthDate: string): Client {
+  const year = Number(birthDate.slice(0, 4));
+  if (client.children.some((c) => c.birthDate === birthDate)) return client;
+  // a child known by year only gets the exact date
+  const sameYear = client.children.find((c) => !c.birthDate && c.birthYear === year);
+  const children = sameYear
+    ? client.children.map((c) => (c === sameYear ? { ...c, birthDate } : c))
+    : [...client.children, { id: newUid(), birthDate }];
+  return { ...client, children };
+}
+
 export function applyCandidate(s: AppState, c: Candidate): AppState {
   const client = s.input.client;
+  const withClient = (next: Client): AppState => ({ ...s, input: { ...s.input, client: next } });
   switch (c.target.type) {
     case 'household': {
       const side = c.target.side;
       return { ...s, household: { ...s.household, [side]: setLine(s.household[side], c.target.key, Number(c.value)) } };
     }
-    case 'birthDate':
-      return { ...s, input: { ...s.input, client: { ...client, birthDate: String(c.value), age: ageOn(String(c.value)) } } };
-    case 'childBirthYear': {
-      const y = Number(c.value);
-      if (client.childrenBirthYears.includes(y)) return s;
-      return { ...s, input: { ...s.input, client: { ...client, childrenBirthYears: [...client.childrenBirthYears, y].sort() } } };
+    case 'birthDate': {
+      const dated = { birthDate: String(c.value), age: ageOn(String(c.value)) };
+      const id = c.target.person;
+      if (client.adults.some((a) => a.id === id)) return withClient({ ...client, adults: client.adults.map((a) => (a.id === id ? { ...a, ...dated } : a)) });
+      return withClient({ ...client, ...dated });
     }
+    case 'childBirth':
+      return withClient(addChild(client, String(c.value)));
     case 'name':
-      return { ...s, input: { ...s.input, client: { ...client, name: String(c.value) } } };
+      return withClient({ ...client, name: String(c.value) });
   }
 }
 
@@ -39,11 +54,14 @@ export function applyTemplate(s: AppState, d: TemplateData): AppState {
     client.birthDate = d.birthDate;
     client.age = ageOn(d.birthDate);
   } else if (d.age) client.age = d.age;
-  if (d.childrenBirthYears) client.childrenBirthYears = d.childrenBirthYears;
-  if (d.partnerName) {
-    const age = d.partnerBirthDate ? ageOn(d.partnerBirthDate) : d.partnerAge ?? client.partner?.age ?? client.age;
-    client.partner = { ...client.partner, name: d.partnerName, age, ...(d.partnerBirthDate && { birthDate: d.partnerBirthDate }) };
-  }
+  if (d.children) client.children = d.children.map((c) => ({ ...c, id: newUid() }));
+  d.adults.forEach((a, i) => {
+    if (!a.name) return;
+    const existing: Adult | undefined = client.adults[i];
+    const age = a.birthDate ? ageOn(a.birthDate) : a.age ?? existing?.age ?? client.age;
+    const adult = { ...existing, id: existing?.id ?? newUid(), name: a.name, age, ...(a.birthDate && { birthDate: a.birthDate }) };
+    client.adults = existing ? client.adults.map((x) => (x === existing ? adult : x)) : [...client.adults, adult];
+  });
   let { income, expenses } = s.household;
   for (const l of d.household.income) income = setLine(income, l.key!, l.amount);
   for (const l of d.household.expenses) expenses = setLine(expenses, l.key!, l.amount);

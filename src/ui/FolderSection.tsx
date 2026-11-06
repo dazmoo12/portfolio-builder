@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react';
+import { assignBirthDates, scanBirthDates } from '../documents/birthScan';
 import { autoImport } from '../documents/autoImport';
 import type { ClientDoc } from '../documents/readers';
 import { downloadTemplate } from '../documents/template';
+import { missingBirthDate } from '../engine/person';
 import { filesToDocs, folderSupported, listFiles, pickFolder, writePortfolio, type ClientFolder } from '../folder/clientFolder';
-import type { T } from '../i18n';
+import { makeFormat, type T } from '../i18n';
 import { newClientState, type AppState } from '../state';
 import { Section } from './Settings';
 
@@ -22,11 +24,42 @@ export function FolderSection({ t, state, folder, setFolder, setState, docs, set
   const [msgs, setMsgs] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [drag, setDrag] = useState(false);
+  const [scanning, setScanning] = useState('');
+  // the search runs in the background: always work on the current state, stop if the client changed
+  const latest = useRef({ state, docs });
+  latest.current = { state, docs };
+  const scanRun = useRef(0);
   const filesInput = useRef<HTMLInputElement>(null);
   const dirInput = useRef<HTMLInputElement>(null);
 
   const fail = (e: unknown) => {
     if ((e as DOMException)?.name !== 'AbortError') setError(e instanceof Error ? e.message : String(e));
+  };
+
+  const findBirthDates = async (list: ClientDoc[]) => {
+    const run = ++scanRun.current;
+    const cancelled = () => run !== scanRun.current || !list.every((d) => latest.current.docs.some((x) => x.id === d.id));
+    try {
+      const hits = await scanBirthDates(list, (file) => setScanning(t('birthSearching', { file })), cancelled);
+      if (cancelled()) return;
+      const current = latest.current.state;
+      if (!missingBirthDate(current.input.client)) return;
+      const res = assignBirthDates(current.input.client, hits);
+      if (res.applied.length) setState({ ...current, input: { ...current.input, client: res.client } });
+      const fmt = makeFormat(current.uiLang);
+      setMsgs((m) => [
+        ...m,
+        ...res.applied.map((a) => t('birthApplied', { name: a.name || t('field_name'), date: fmt.date(a.date), file: a.source })),
+        ...(res.unclear ? [t('birthUnclear')] : []),
+        ...(res.applied.length === 0 && !res.unclear ? [t('birthNotFound')] : []),
+      ]);
+    } finally {
+      if (run === scanRun.current) setScanning('');
+    }
+  };
+
+  const startSearch = (next: AppState, list: ClientDoc[]) => {
+    if (missingBirthDate(next.input.client)) void findBirthDates(list);
   };
 
   const open = async () => {
@@ -39,6 +72,8 @@ export function FolderSection({ t, state, folder, setFolder, setState, docs, set
       setFolder(dir);
       setDocs(list);
       setMsgs(res.messages.length ? res.messages : [t('folderEmpty', { name: dir.name })]);
+      latest.current = { state: res.state, docs: list };
+      startSearch(res.state, list);
     } catch (e) {
       fail(e);
     }
@@ -50,9 +85,12 @@ export function FolderSection({ t, state, folder, setFolder, setState, docs, set
     try {
       const added = filesToDocs(files);
       const res = await autoImport(added, state, t, { allowPortfolio: true });
+      const all = [...docs.filter((d) => !added.some((a) => a.id === d.id)), ...added];
       setState(res.state);
-      setDocs([...docs.filter((d) => !added.some((a) => a.id === d.id)), ...added]);
+      setDocs(all);
       setMsgs(res.messages);
+      latest.current = { state: res.state, docs: all };
+      startSearch(res.state, added);
       onShowDocs();
     } catch (e) {
       fail(e);
@@ -154,6 +192,7 @@ export function FolderSection({ t, state, folder, setFolder, setState, docs, set
           {m}
         </div>
       ))}
+      {scanning && <div className="hint">{scanning}</div>}
       {error && <div className="warnings">⚠ {error}</div>}
       <div className="upload-row">
         {docs.length > 0 && (

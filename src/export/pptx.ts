@@ -18,7 +18,7 @@ export async function exportPptx(vm: ViewModel, advisor: Advisor, household?: Ho
   const k = vm.kpi;
   const charts = vm.output.charts;
   const devPositions = vm.development.positions.filter((p) => p.visible);
-  const partialNote = vm.hiddenNames.length ? t('partialNote', { products: vm.hiddenNames.join(', ') }) : '';
+  const partialNote = [vm.hiddenNames.length ? t('partialNote', { products: vm.hiddenNames.join(', ') }) : '', vm.termNote].filter(Boolean).join(' ');
   const showRange = vm.output.showRange;
   const scenarioNote = t('scenarioNote', { scenario: t(vm.scenario), rate: fmt.pct(vm.avgReturn) });
   const positionsTable = () => [
@@ -27,7 +27,7 @@ export async function exportPptx(vm: ViewModel, advisor: Advisor, household?: Ho
       options: { bold: true, color: hex(onColor(c.primary)), fill: { color: hex(c.primary) } },
     })),
     ...vm.positions.map((p) => [
-      { text: p.name },
+      { text: `${p.name}\n${p.timing}` },
       { text: fmt.eur(p.monthly), options: { align: 'right' as const } },
       { text: fmt.eur(p.oneOff), options: { align: 'right' as const } },
       { text: fmt.eur(p.value), options: { align: 'right' as const, bold: true } },
@@ -312,17 +312,7 @@ export async function exportPptx(vm: ViewModel, advisor: Advisor, household?: Ho
         ...chartFont,
       },
     );
-    const head = [t('product'), t('monthly'), t('oneOff'), `${t('value')} ${vm.year}`].map((text) => ({
-      text,
-      options: { bold: true, color: hex(onColor(c.primary)), fill: { color: hex(c.primary) } },
-    }));
-    const rows = vm.positions.map((p) => [
-      { text: p.name },
-      { text: fmt.eur(p.monthly), options: { align: 'right' as const } },
-      { text: fmt.eur(p.oneOff), options: { align: 'right' as const } },
-      { text: fmt.eur(p.value), options: { align: 'right' as const, bold: true } },
-    ]);
-    s.addTable([head, ...rows], {
+    s.addTable(positionsTable(), {
       x: 7.3, y: 1.5, w: 5.43, colW: [2.33, 1, 1, 1.1], fontFace: B, fontSize: 10, color: hex(c.text),
       border: { type: 'solid', color: 'E3E7EC', pt: 0.5 }, rowH: 0.36, valign: 'middle',
     });

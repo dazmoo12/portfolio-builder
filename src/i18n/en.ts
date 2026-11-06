@@ -229,19 +229,29 @@ export const en = {
   field_children: 'Child (birth year)',
 
   // second adult
-  addAdult: '+ Second adult',
-  secondAdult: 'Second adult',
+  addAdult: '+ Further adult',
+  secondAdult: 'Further adult',
   childBonusFor: 'Child bonus goes to',
   avdOwner: 'AVD of',
-  field_partnerName: 'Second adult – name',
-  field_partnerAge: 'Second adult – age',
+  field_partnerName: 'Further adult – name',
+  field_partnerAge: 'Further adult – age',
   warn_avdDuplicate: 'The subsidy applies once per person – assign only one AVD to each person.',
 
   // product selection
   shownProducts: 'Products shown',
   partialNote: 'Partial view: figures and charts exclude {products}.',
   ageFromBirthDate: 'Calculated from the date of birth',
-  field_partnerBirthDate: 'Second adult – date of birth',
+  field_partnerBirthDate: 'Further adult – date of birth',
+
+  // date of birth search
+  birthSearching: 'Looking for dates of birth… {file}',
+  birthApplied: 'Date of birth of {name}: {date} from {file}. Please check.',
+  birthUnclear: 'Dates of birth found, but not clearly assignable – please choose under Client documents.',
+  birthNotFound: 'No date of birth found in the documents.',
+  docApplyFor: 'For {name}',
+  childYear: 'Birth year',
+  applyTimingAll: 'Apply start and term to all products',
+  reportTermNote: 'After the end of a contract term its value is shown unchanged, without further returns.',
 };
 
 export type Dict = typeof en;

@@ -52,6 +52,39 @@ export function kindOf(name: string): DocKind {
 /** Browsers can display these image types directly. */
 const PREVIEWABLE_IMAGES = /\.(jpe?g|png|gif|webp|bmp)$/i;
 
+export const hasBrowserImage = (name: string) => PREVIEWABLE_IMAGES.test(name);
+
+// shared by the background search and the documents view, so nothing is read twice
+const cache = new WeakMap<ClientDoc, DocContent>();
+const ocrListeners = new Set<(doc: ClientDoc, content: DocContent) => void>();
+
+/** Text recognition may finish while a document is already on screen. */
+export function onOcrDone(listener: (doc: ClientDoc, content: DocContent) => void) {
+  ocrListeners.add(listener);
+  return () => {
+    ocrListeners.delete(listener);
+  };
+}
+
+export async function readDocCached(doc: ClientDoc): Promise<DocContent> {
+  const known = cache.get(doc);
+  if (known) return known;
+  const content = await readDoc(doc);
+  cache.set(doc, content);
+  return content;
+}
+
+/** Runs text recognition on an image or scanned PDF and keeps the result with the document. */
+export async function ocrDoc(doc: ClientDoc, content: DocContent, onProgress: (p: number) => void = () => {}): Promise<DocContent> {
+  const file = await doc.getFile();
+  const sources = doc.kind === 'pdf' ? await pdfToCanvases(file) : [file];
+  const text = await ocr(sources, onProgress);
+  const result = { ...content, text: [content.text, text].filter(Boolean).join('\n\n'), scanned: false };
+  cache.set(doc, result);
+  ocrListeners.forEach((l) => l(doc, result));
+  return result;
+}
+
 export async function readDoc(doc: ClientDoc): Promise<DocContent> {
   const file = await doc.getFile();
   switch (doc.kind) {

@@ -7,7 +7,7 @@
 //  - no taxes (shown as gross values, see disclaimer)
 
 import { AVD_RULES, annualSubsidy, starterBonusApplies } from './avd';
-import { ageAtStart } from './person';
+import { adultOwner, ageAtContractStart, childBirthYear } from './person';
 import {
   SCENARIOS,
   type PortfolioInput,
@@ -25,23 +25,40 @@ import {
 export type Catalog = Record<string, Product>;
 
 export function positionOwner(client: Client, position: Position): Owner {
-  return position.owner === 'partner' && client.partner ? 'partner' : 'primary';
+  return adultOwner(client, position.owner)?.id ?? 'primary';
 }
 
-export function ownerAge(input: PortfolioInput, owner: Owner): number {
-  const { client, startYear } = input;
-  return ageAtStart(owner === 'partner' && client.partner ? client.partner : client, startYear);
+/** Start and term of a contract; contracts without their own values follow the portfolio. */
+export function positionTiming(input: PortfolioInput, position: Position) {
+  const [y, m] = (position.start ?? '').split('-').map(Number);
+  const valid = y >= 1900 && m >= 1 && m <= 12;
+  return { year: valid ? y : input.startYear, month: valid ? m : 1, years: position.years ?? input.horizonYears };
+}
+
+/** The portfolio's timeline runs from the first contract start to the last contract end. */
+export function syncTimeline(input: PortfolioInput): PortfolioInput {
+  if (input.positions.length === 0) return input;
+  const times = input.positions.map((p) => positionTiming(input, p));
+  const startYear = Math.min(...times.map((t) => t.year));
+  return { ...input, startYear, horizonYears: Math.max(...times.map((t) => t.year + t.years)) - startYear };
+}
+
+/** Age of the contract's owner when the contract starts. */
+export function ownerAge(input: PortfolioInput, position: Position): number {
+  const { year, month } = positionTiming(input, position);
+  return ageAtContractStart(adultOwner(input.client, position.owner) ?? input.client, year, month, input.startYear);
 }
 
 /** Children count for the AVD of the parent receiving the child bonus only. */
 function childYearsFor(client: Client, owner: Owner): number[] {
-  const bonusOwner = client.partner && client.childBonusOwner === 'partner' ? 'partner' : 'primary';
-  return owner === bonusOwner ? client.childrenBirthYears : [];
+  const bonusOwner = adultOwner(client, client.childBonusOwner)?.id ?? 'primary';
+  if (owner !== bonusOwner) return [];
+  return client.children.map(childBirthYear).filter((y): y is number => y !== undefined);
 }
 
 export function clientDisplayName(client: Client): string {
-  const partner = client.partner?.name.trim();
-  return partner ? `${client.name} & ${partner}` : client.name;
+  const names = [client.name, ...client.adults.map((a) => a.name.trim()).filter(Boolean)];
+  return names.length > 1 ? `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}` : client.name;
 }
 
 export function positionAmounts(input: PortfolioInput, position: Position, product: Product) {
@@ -64,22 +81,13 @@ export function projectPosition(
   const exit = product.exitFee ?? 0;
   const isAvd = product.kind === 'avd';
   const owner = positionOwner(input.client, position);
+  const timing = positionTiming(input, position);
+  const offset = Math.max(0, timing.year - input.startYear);
 
   let value = 0;
   let paidIn = 0;
   let subsidy = 0;
   let fees = 0;
-
-  // t = 0: one-off investment and starter bonus
-  if (oneOff > 0) {
-    paidIn += oneOff;
-    fees += oneOff * entry;
-    value += oneOff * (1 - entry);
-  }
-  if (isAvd && monthly > 0 && starterBonusApplies(ownerAge(input, owner))) {
-    subsidy += AVD_RULES.starterBonus;
-    value += AVD_RULES.starterBonus;
-  }
 
   const point = (year: number): YearPoint => ({
     year,
@@ -90,28 +98,44 @@ export function projectPosition(
     fees,
   });
 
-  const series: YearPoint[] = [point(input.startYear)];
+  const series: YearPoint[] = [];
 
-  for (let y = 1; y <= input.horizonYears; y++) {
-    const calendarYear = input.startYear + y - 1;
-    // growth and running costs on last year's value
-    const grown = value * (1 + r);
-    fees += grown * annualFee;
-    value = grown * (1 - annualFee);
+  for (let i = 0; i <= input.horizonYears; i++) {
+    const y = i - offset; // contract year; before the start everything stays at zero
 
-    // contributions of this year (with Dynamik), added at year end
-    let annualOwn = monthly * 12 * Math.pow(1 + input.dynamicIncrease, y - 1);
-    if (isAvd) annualOwn = Math.min(annualOwn, AVD_RULES.maxAnnualContribution);
-    paidIn += annualOwn;
-    fees += annualOwn * entry;
-    value += annualOwn * (1 - entry);
+    if (y === 0) {
+      // contract start: one-off investment and starter bonus
+      if (oneOff > 0) {
+        paidIn += oneOff;
+        fees += oneOff * entry;
+        value += oneOff * (1 - entry);
+      }
+      if (isAvd && monthly > 0 && starterBonusApplies(ownerAge(input, position))) {
+        subsidy += AVD_RULES.starterBonus;
+        value += AVD_RULES.starterBonus;
+      }
+    } else if (y >= 1 && y <= timing.years) {
+      const calendarYear = timing.year + y - 1;
+      // growth and running costs on last year's value
+      const grown = value * (1 + r);
+      fees += grown * annualFee;
+      value = grown * (1 - annualFee);
 
-    if (isAvd && annualOwn > 0) {
-      const s = annualSubsidy(annualOwn, childYearsFor(input.client, owner), calendarYear);
-      subsidy += s;
-      value += s;
+      // contributions of this year (with Dynamik), added at year end
+      let annualOwn = monthly * 12 * Math.pow(1 + input.dynamicIncrease, y - 1);
+      if (isAvd) annualOwn = Math.min(annualOwn, AVD_RULES.maxAnnualContribution);
+      paidIn += annualOwn;
+      fees += annualOwn * entry;
+      value += annualOwn * (1 - entry);
+
+      if (isAvd && annualOwn > 0) {
+        const s = annualSubsidy(annualOwn, childYearsFor(input.client, owner), calendarYear);
+        subsidy += s;
+        value += s;
+      }
     }
-    series.push(point(input.startYear + y));
+    // after the term the value stays as it is: no contributions, growth or costs are assumed
+    series.push(point(input.startYear + i));
   }
 
   return { position, product, monthly, oneOff, series };
@@ -181,7 +205,7 @@ export function validateWeights(input: PortfolioInput, catalog: Catalog) {
     const owner = positionOwner(input.client, p);
     const w = (key: Warning['key']) => warnings.push({ key, productId: product.id, uid: p.uid });
     if (product.kind === 'avd' && monthly * 12 > AVD_RULES.maxAnnualContribution) w('avdMax');
-    if (product.kind === 'avd' && monthly > 0 && ownerAge(input, owner) + input.horizonYears > AVD_RULES.payoutLatestAge) w('avdHorizon');
+    if (product.kind === 'avd' && monthly > 0 && ownerAge(input, p) + positionTiming(input, p).years > AVD_RULES.payoutLatestAge) w('avdHorizon');
     if (product.kind === 'avd') {
       if (avdOwners.has(owner)) w('avdDuplicate');
       avdOwners.add(owner);

@@ -320,3 +320,9 @@ input.budget-label { border: 1px solid var(--ui-line); border-radius: 6px; paddi
 .r-partial { font-size: 10px; color: var(--t-muted); margin: 0; }
 .input-wrap.readonly { background: #f4f5f7; }
 .input-wrap.readonly input { color: var(--ui-muted); }
+.block { display: block; }
+.small.muted { color: var(--t-muted); font-size: 11px; }
+.pos-timing { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 8px; margin-top: 6px; }
+.pos-timing .field input { padding: 4px 6px; font-size: 13px; }
+.adult-row { display: flex; flex-direction: column; gap: 8px; }
+.child-row { display: grid; grid-template-columns: minmax(0, 1fr) 82px 24px; gap: 8px; align-items: end; }

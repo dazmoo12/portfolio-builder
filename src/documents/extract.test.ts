@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ageOn, findCandidates, parseAmount } from './extract';
+import { ageOn, findCandidates, mrzBirthDates, mrzCheckDigit, parseAmount } from './extract';
 
 const values = (text: string) =>
   findCandidates({ text }, 'test').map((c) => [c.target.type === 'household' ? c.target.key : c.target.type, c.value]);
@@ -33,7 +33,7 @@ describe('document value recognition', () => {
   it('recognises dates of birth of the client and children', () => {
     expect(values('Name: Anna Beispiel, geboren am 12.02.1994\nKind: Lena, geb. 03.05.2021')).toEqual([
       ['birthDate', '1994-02-12'],
-      ['childBirthYear', 2021],
+      ['childBirth', '2021-05-03'],
     ]);
   });
 
@@ -47,6 +47,25 @@ describe('document value recognition', () => {
       ['exp_leisure', 185], // summed
       ['exp_mobility', 240],
     ]);
+  });
+
+  it('reads ID cards: label above the date, other dates ignored', () => {
+    const text = ['Name / Surname', 'MUSTERMANN', 'Vornamen / Given names', 'ERIKA', 'Geburtstag / Date of birth', '12.08.1983 DEUTSCH', 'Gültig bis / Date of expiry', '31.03.2031'];
+    expect(values(text.join('\n'))).toEqual([['birthDate', '1983-08-12']]);
+  });
+
+  it('does not take the expiry date when the date of birth is unreadable', () => {
+    expect(values('Geburtstag / Date of birth\nGültig bis 31.03.2031')).toEqual([]);
+  });
+
+  it('reads the machine-readable zone, with typical OCR errors', () => {
+    const birth = '830812';
+    const expiry = '310331';
+    const line = `${birth}${mrzCheckDigit(birth)}F${expiry}${mrzCheckDigit(expiry)}D<<<<<<<<<<<<<6`;
+    const today = new Date('2026-11-06T12:00:00');
+    expect(mrzBirthDates(`IDD<<T220001293<<<<<<<<<<<<<<<\n${line}\nMUSTERMANN<<ERIKA<<<<<<<<<<<<<`, today)).toEqual(['1983-08-12']);
+    expect(mrzBirthDates(line.replace('F', 'K').replace(/8/, 'B').replace('<<<', '«<'), today)).toEqual(['1983-08-12']);
+    expect(mrzBirthDates(line.replace('830812', '830813'), today)).toEqual([]); // check digit fails
   });
 
   it('computes age', () => {

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { catalog, newUid, presetPositions, presets, products } from '../catalog';
-import { ageOn, ageToday, validBirthDate, type Person } from '../engine/person';
-import { positionOwner, validateWeights } from '../engine/projection';
-import type { Owner, Position, ProductGroup } from '../engine/types';
+import { ageOn, ageToday, childBirthYear, validBirthDate, type Person } from '../engine/person';
+import { positionOwner, positionTiming, validateWeights } from '../engine/projection';
+import type { Adult, Child, PortfolioInput, Position, ProductGroup } from '../engine/types';
 import type { T, Format } from '../i18n';
 import type { AppState } from '../state';
 import type { Theme } from '../templates/themes';
@@ -103,83 +103,92 @@ function PersonDates({ t, person, onChange }: { t: T; person: Person; onChange: 
 }
 
 export function ClientSection({ state, t, updateInput }: Props) {
-  const { client, startYear, horizonYears } = state.input;
+  const { client } = state.input;
   const setClient = (p: Partial<typeof client>) => updateInput({ client: { ...client, ...p } });
+  const setAdult = (id: string, p: Partial<Adult>) => setClient({ adults: client.adults.map((a) => (a.id === id ? { ...a, ...p } : a)) });
+  const setChild = (id: string, p: Partial<Child>) => setClient({ children: client.children.map((c) => (c.id === id ? { ...c, ...p } : c)) });
+  const adultLabel = (a: Adult) => a.name || t('secondAdult');
   return (
     <Section title={t('secClient')}>
-        <label className="field">
-          <span>{t('clientName')}</span>
-          <input value={client.name} onChange={(e) => setClient({ name: e.target.value })} />
-        </label>
-        <PersonDates t={t} person={client} onChange={setClient} />
-        <NumberField label={t('startYear')} value={startYear} min={2025} max={2100} onChange={(v) => updateInput({ startYear: v })} />
-        <NumberField
-          label={t('horizon')}
-          value={horizonYears}
-          min={1}
-          max={60}
-          onChange={(v) => updateInput({ horizonYears: Math.min(60, Math.max(1, Math.round(v))) })}
-        />
-        <div className="field">
-          <span>{t('children')}</span>
-          <div className="chips">
-            {client.childrenBirthYears.map((y, i) => (
-              <span className="chip" key={i}>
-                <input
-                  type="number"
-                  value={y}
-                  onChange={(e) => {
-                    const arr = [...client.childrenBirthYears];
-                    arr[i] = Number(e.target.value);
-                    setClient({ childrenBirthYears: arr });
-                  }}
-                />
-                <button
-                  aria-label={t('remove')}
-                  onClick={() => setClient({ childrenBirthYears: client.childrenBirthYears.filter((_, j) => j !== i) })}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-            <button className="link" onClick={() => setClient({ childrenBirthYears: [...client.childrenBirthYears, startYear - 1] })}>
-              {t('addChild')}
+      <label className="field">
+        <span>{t('clientName')}</span>
+        <input value={client.name} onChange={(e) => setClient({ name: e.target.value })} />
+      </label>
+      <PersonDates t={t} person={client} onChange={setClient} />
+
+      {client.adults.map((a) => (
+        <div className="partner-box" key={a.id}>
+          <div className="pos-head">
+            <span className="pos-name">{t('secondAdult')}</span>
+            <button
+              className="icon"
+              aria-label={t('remove')}
+              title={t('remove')}
+              onClick={() =>
+                setClient({
+                  adults: client.adults.filter((x) => x.id !== a.id),
+                  childBonusOwner: client.childBonusOwner === a.id ? undefined : client.childBonusOwner,
+                })
+              }
+            >
+              ×
             </button>
           </div>
+          <label className="field">
+            <span>{t('clientName')}</span>
+            <input value={a.name} onChange={(e) => setAdult(a.id, { name: e.target.value })} />
+          </label>
+          <PersonDates t={t} person={a} onChange={(p) => setAdult(a.id, p)} />
         </div>
-        {client.partner ? (
-          <div className="partner-box">
-            <div className="pos-head">
-              <span className="pos-name">{t('secondAdult')}</span>
-              <button
-                className="icon"
-                aria-label={t('remove')}
-                title={t('remove')}
-                onClick={() => setClient({ partner: undefined, childBonusOwner: undefined })}
-              >
-                ×
-              </button>
-            </div>
-            <label className="field">
-              <span>{t('clientName')}</span>
-              <input value={client.partner.name} onChange={(e) => setClient({ partner: { ...client.partner!, name: e.target.value } })} />
-            </label>
-            <PersonDates t={t} person={client.partner} onChange={(p) => setClient({ partner: { ...client.partner!, ...p } })} />
-            {client.childrenBirthYears.length > 0 && (
-              <label className="field">
-                <span>{t('childBonusFor')}</span>
-                <select value={client.childBonusOwner ?? 'primary'} onChange={(e) => setClient({ childBonusOwner: e.target.value as Owner })}>
-                  <option value="primary">{client.name || t('clientName')}</option>
-                  <option value="partner">{client.partner.name || t('secondAdult')}</option>
-                </select>
-              </label>
-            )}
+      ))}
+      <button className="link align-start" onClick={() => setClient({ adults: [...client.adults, { id: newUid(), name: '', age: client.age }] })}>
+        {t('addAdult')}
+      </button>
+
+      <div className="field">
+        <span>{t('children')}</span>
+        {client.children.map((c) => (
+          <div className="child-row" key={c.id}>
+            <input
+              type="date"
+              aria-label={t('field_birthDate')}
+              min="1900-01-01"
+              max={new Date().toISOString().slice(0, 10)}
+              value={c.birthDate ?? ''}
+              onChange={(e) => setChild(c.id, { birthDate: e.target.value || undefined })}
+            />
+            <input
+              type="number"
+              aria-label={t('childYear')}
+              title={t('childYear')}
+              placeholder={t('childYear')}
+              disabled={validBirthDate(c.birthDate)}
+              value={childBirthYear(c) ?? ''}
+              onChange={(e) => setChild(c.id, { birthYear: Number(e.target.value) || undefined })}
+            />
+            <button className="icon" aria-label={t('remove')} title={t('remove')} onClick={() => setClient({ children: client.children.filter((x) => x.id !== c.id) })}>
+              ×
+            </button>
           </div>
-        ) : (
-          <button className="link align-start" onClick={() => setClient({ partner: { name: '', age: client.age } })}>
-            {t('addAdult')}
-          </button>
-        )}
+        ))}
+        <button className="link align-start" onClick={() => setClient({ children: [...client.children, { id: newUid() }] })}>
+          {t('addChild')}
+        </button>
+      </div>
+
+      {client.adults.length > 0 && client.children.length > 0 && (
+        <label className="field">
+          <span>{t('childBonusFor')}</span>
+          <select value={client.childBonusOwner ?? 'primary'} onChange={(e) => setClient({ childBonusOwner: e.target.value })}>
+            <option value="primary">{client.name || t('clientName')}</option>
+            {client.adults.map((a) => (
+              <option key={a.id} value={a.id}>
+                {adultLabel(a)}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
     </Section>
   );
 }
@@ -209,13 +218,22 @@ export function PresetSection({ state, t, updateInput }: Props) {
     <Section title={t('secPresets')}>
       <div className="preset-grid">
         {presets.map((p) => (
-          <button key={p.id} className="preset" onClick={() => updateInput({ positions: presetPositions(p) })}>
+          <button key={p.id} className="preset" onClick={() => updateInput({ positions: presetPositions(p, nextTiming(state.input)) })}>
             {p.name[state.uiLang]}
           </button>
         ))}
       </div>
     </Section>
   );
+}
+
+/** New products start with the timing of the first contract. */
+function nextTiming(input: PortfolioInput) {
+  const first = input.positions[0];
+  return {
+    start: first?.start ?? `${input.startYear}-01`,
+    years: first ? positionTiming(input, first).years : input.horizonYears,
+  };
 }
 
 const GROUPS: { group: ProductGroup; key: 'groupPension' | 'groupRiskProfile' | 'groupFund' | 'groupMetal' }[] = [
@@ -248,9 +266,11 @@ export function PositionsSection({ state, t, fmt, theme, updateInput }: Props) {
     });
   };
 
+  const setPosition = (uid: string, p: Partial<Position>) => updateInput({ positions: i.positions.map((x) => (x.uid === uid ? { ...x, ...p } : x)) });
+
   const add = (productId: string) => {
     if (!productId) return;
-    updateInput({ positions: [...i.positions, { uid: newUid(), productId, monthlyWeight: 0, oneOffWeight: 0 }] });
+    updateInput({ positions: [...i.positions, { uid: newUid(), productId, monthlyWeight: 0, oneOffWeight: 0, ...nextTiming(i) }] });
   };
 
   return (
@@ -287,17 +307,41 @@ export function PositionsSection({ state, t, fmt, theme, updateInput }: Props) {
                   ×
                 </button>
               </div>
-              {product.kind === 'avd' && i.client.partner && (
+              {product.kind === 'avd' && i.client.adults.length > 0 && (
                 <label className="owner">
                   <span>{t('avdOwner')}</span>
-                  <select
-                    value={positionOwner(i.client, p)}
-                    onChange={(e) => updateInput({ positions: i.positions.map((x) => (x.uid === p.uid ? { ...x, owner: e.target.value as Owner } : x)) })}
-                  >
+                  <select value={positionOwner(i.client, p)} onChange={(e) => setPosition(p.uid, { owner: e.target.value })}>
                     <option value="primary">{i.client.name || t('clientName')}</option>
-                    <option value="partner">{i.client.partner.name || t('secondAdult')}</option>
+                    {i.client.adults.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name || t('secondAdult')}
+                      </option>
+                    ))}
                   </select>
                 </label>
+              )}
+              <div className="pos-timing">
+                <label className="field">
+                  <span>{t('reportStart')}</span>
+                  <input
+                    type="month"
+                    value={p.start ?? ''}
+                    // an unfinished entry is empty: keep the last complete month
+                    onChange={(e) => e.target.value && setPosition(p.uid, { start: e.target.value })}
+                  />
+                </label>
+                <NumberField
+                  label={t('horizon')}
+                  value={positionTiming(i, p).years}
+                  min={1}
+                  max={60}
+                  onChange={(v) => setPosition(p.uid, { years: Math.min(60, Math.max(1, Math.round(v))) })}
+                />
+              </div>
+              {i.positions.length > 1 && (
+                <button className="link" onClick={() => updateInput({ positions: i.positions.map((x) => ({ ...x, start: p.start, years: p.years })) })}>
+                  {t('applyTimingAll')}
+                </button>
               )}
               {disabled ? (
                 <div className="hint">{t('noOneOff')}</div>

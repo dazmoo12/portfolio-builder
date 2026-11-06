@@ -5,17 +5,19 @@ import type { DocContent } from './readers';
 
 export type CandidateTarget =
   | { type: 'household'; side: 'income' | 'expenses'; key: string }
-  | { type: 'birthDate' }
-  | { type: 'childBirthYear' }
+  | { type: 'birthDate'; /** Id of a further adult; default is the client. */ person?: string }
+  | { type: 'childBirth' }
   | { type: 'name' };
 
 export interface Candidate {
   id: string;
   target: CandidateTarget;
-  /** Monthly € amount, birth date (ISO), birth year or name. */
+  /** Monthly € amount, birth date (ISO) or name. */
   value: number | string;
   /** Text the value was found in. */
   context: string;
+  /** Wider surroundings, to match a date of birth to a person by name. */
+  nearby?: string;
   source: string;
 }
 
@@ -39,8 +41,11 @@ const KEYWORDS: { side: 'income' | 'expenses'; key: string; words: string[] }[] 
 
 // 1.234,56 € | € 1.234 | 1234,00 EUR | 1,234.56 EUR
 const AMOUNT = /(?:€|eur(?:o)?)\s*(\d{1,3}(?:[.\s']\d{3})*(?:,\d{1,2})?|\d+(?:,\d{1,2})?)|(\d{1,3}(?:[.\s']\d{3})*(?:,\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s*(?:€|eur(?:o)?\b)/gi;
-const DATE = /(\d{1,2})[./](\d{1,2})[./](\d{4})|(\d{4})-(\d{2})-(\d{2})/;
-const BIRTH_WORDS = ['geboren', 'geb.', 'geburtsdatum', 'date of birth', 'born', 'data de nascimento'];
+// separators may be followed by a space, and ID cards also print "12 02 1994"
+const DATE = /(\d{1,2})\s?[./ ]\s?(\d{1,2})\s?[./ ]\s?(\d{4})|(\d{4})-(\d{2})-(\d{2})/;
+const BIRTH_WORDS = ['geboren', 'geb.', 'geburtsdatum', 'geburtstag', 'date of birth', 'date de naissance', 'born', 'data de nascimento'];
+// other dates printed next to the date of birth on ID documents
+const OTHER_DATE_WORDS = ['gültig', 'gueltig', 'valid', 'expiry', 'ablauf', 'ausstell', 'date of issue'];
 const CHILD_WORDS = ['kind', 'sohn', 'tochter', 'child', 'filho', 'filha'];
 
 export function parseAmount(raw: string): number {
@@ -77,6 +82,34 @@ function matchCategory(text: string) {
   return KEYWORDS.find((k) => k.words.some((w) => l.includes(w)));
 }
 
+/** ICAO check digit of machine-readable zones. */
+export function mrzCheckDigit(s: string): number {
+  const value = (c: string) => (c === '<' ? 0 : c >= 'A' ? c.charCodeAt(0) - 55 : Number(c));
+  return [...s].reduce((sum, c, i) => sum + value(c) * [7, 3, 1][i % 3], 0) % 10;
+}
+
+const digits = (s: string) => s.replace(/O/g, '0').replace(/[IL]/g, '1').replace(/S/g, '5').replace(/B/g, '8');
+
+/**
+ * Date of birth from the machine-readable lines of ID cards and passports. Both check digits
+ * must match, so misread text cannot produce a wrong date. "<" is often read as K or « by OCR.
+ */
+export function mrzBirthDates(text: string, today = new Date()): string[] {
+  const out: string[] = [];
+  for (const raw of text.split(/\n/)) {
+    const line = raw.toUpperCase().replace(/\s/g, '').replace(/[«»]/g, '<<');
+    if (line.length < 25) continue;
+    for (const m of line.matchAll(/([0-9OILSB]{6})([0-9OILSB])[MFXK<]([0-9OILSB]{6})([0-9OILSB])/g)) {
+      const [birth, birthCheck, expiry, expiryCheck] = [m[1], m[2], m[3], m[4]].map(digits);
+      if (mrzCheckDigit(birth) !== Number(birthCheck) || mrzCheckDigit(expiry) !== Number(expiryCheck)) continue;
+      const yy = Number(birth.slice(0, 2));
+      const century = 2000 + yy > today.getFullYear() ? 1900 : 2000; // two-digit year: never in the future
+      out.push(`${century + yy}-${birth.slice(2, 4)}-${birth.slice(4, 6)}`);
+    }
+  }
+  return out;
+}
+
 let seq = 0;
 const cid = () => `c${Date.now().toString(36)}${(seq++).toString(36)}`;
 
@@ -110,24 +143,30 @@ export function findCandidates(content: DocContent, source: string): Candidate[]
   const lines = content.text.split(/\n/).map((l) => l.trim()).filter(Boolean);
   // on payslips every other amount is a deduction – only the net pay counts for the budget
   const payslip = /lohnsteuer|gesamtbrutto|auszahlungsbetrag/i.test(content.text);
-  for (const line of lines) {
+  for (const iso of mrzBirthDates(content.text)) push({ target: { type: 'birthDate' }, value: iso, context: 'MRZ', nearby: content.text });
+
+  lines.forEach((line, i) => {
     const lower = line.toLowerCase();
-    const date = line.match(DATE);
-    if (date) {
-      const iso = parseDate(date);
-      if (iso && BIRTH_WORDS.some((w) => lower.includes(w))) {
-        if (CHILD_WORDS.some((w) => new RegExp(`\\b${w}`).test(lower))) push({ target: { type: 'childBirthYear' }, value: Number(iso.slice(0, 4)), context: line });
-        else push({ target: { type: 'birthDate' }, value: iso, context: line });
+    if (BIRTH_WORDS.some((w) => lower.includes(w))) {
+      // the date follows the label directly or, as on ID cards, in the next lines
+      const dateLine = [line, lines[i + 1], lines[i + 2]].find(
+        (l) => l !== undefined && DATE.test(l) && !OTHER_DATE_WORDS.some((w) => l.toLowerCase().includes(w)),
+      );
+      const iso = dateLine ? parseDate(dateLine.match(DATE)!) : null;
+      if (iso && dateLine) {
+        const nearby = lines.slice(Math.max(0, i - 8), i + 3).join('\n');
+        if (CHILD_WORDS.some((w) => new RegExp(`\\b${w}`).test(lower))) push({ target: { type: 'childBirth' }, value: iso, context: dateLine });
+        else push({ target: { type: 'birthDate' }, value: iso, context: dateLine, nearby });
       }
     }
-    if (content.tables) continue; // tables were handled above
+    if (content.tables) return; // tables were handled above
     const cat = matchCategory(line);
-    if (!cat || (payslip && cat.key !== 'inc_salary')) continue;
+    if (!cat || (payslip && cat.key !== 'inc_salary')) return;
     for (const m of line.matchAll(AMOUNT)) {
       const value = parseAmount(m[1] ?? m[2]);
       if (value > 0 && value < 100_000) push({ target: { type: 'household', side: cat.side, key: cat.key }, value: round2(toMonthly(value, line)), context: line });
     }
-  }
+  });
   return out;
 }
 

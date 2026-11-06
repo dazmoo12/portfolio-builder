@@ -21,7 +21,11 @@ Languages: DE / EN / PT. The language switch changes interface and document toge
 
 **Date of birth:** definitive when entered, for both adults: the age is calculated and locked, and drives the starter bonus, payout-age check and output. Without a date, the age field is used. Ages in the projection count from 1 January of the start year.
 
-**Second adult:** a client can have a second adult (name, date of birth or age). Each AVD is assigned to one person, because subsidies, starter bonus and payout age are personal; a child counts for one parent only ("Kinderzulage erhält").
+**Automatic date-of-birth search:** when a folder is opened or files are uploaded and a date is missing, the tool searches in the background: files that look like IDs first (with OCR), then readable documents, then up to six other images. It understands ID card layouts and the machine-readable lines (validated by check digits). A date is only entered if it is clearly assignable: by the name next to it, or as the only adult date for a single client. Children are ignored, existing dates are never overwritten, and unclear cases are left for the advisor under client documents.
+
+**Adults and children:** a client can have any number of further adults, e.g. a partner or a grown-up child (name, date of birth or age). Each AVD is assigned to one person, because subsidies, starter bonus and payout age are personal; a child counts for one parent only ("Kinderzulage erhält"). Children have a date of birth, or a birth year if the date is unknown.
+
+**Start and term per contract:** set for each product in the portfolio list. The portfolio's timeline runs from the first start to the last end. The calculation keeps annual steps, so a contract counts from its start year; the month decides age-dependent rules exactly. After its term a contract's value stays unchanged, without further returns, and the output says so.
 
 **Advisor profiles:** save contact details once and pick a default. "+ New client" starts the next client with that advisor and the same output settings.
 
