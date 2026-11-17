@@ -326,3 +326,12 @@ input.budget-label { border: 1px solid var(--ui-line); border-radius: 6px; paddi
 .pos-timing .field input { padding: 4px 6px; font-size: 13px; }
 .adult-row { display: flex; flex-direction: column; gap: 8px; }
 .child-row { display: grid; grid-template-columns: minmax(0, 1fr) 82px 24px; gap: 8px; align-items: end; }
+
+/* ---------- editable assumptions and costs ---------- */
+.assump-row { border-bottom: 1px solid var(--ui-line); padding-bottom: 8px; display: flex; flex-direction: column; gap: 6px; }
+.assump-name { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 600; }
+.assump-name .link { font-weight: 400; font-size: 12px; white-space: nowrap; }
+.mini-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; align-items: end; }
+.mini { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--ui-muted); min-width: 0; }
+.mini .input-wrap input { padding: 4px 6px; font-size: 13px; }
+.mini-note { grid-column: span 2; align-self: center; }

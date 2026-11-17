@@ -27,6 +27,8 @@ Languages: DE / EN / PT. The language switch changes interface and document toge
 
 **Start and term per contract:** set for each product in the portfolio list. The portfolio's timeline runs from the first start to the last end. The calculation keeps annual steps, so a contract counts from its start year; the month decides age-dependent rules exactly. After its term a contract's value stays unchanged, without further returns, and the output says so.
 
+**Assumptions and costs (left panel):** return assumptions per scenario and costs per product are editable: front load (funds 4 %, AVD 1 % on own contributions, both deducted from each payment), Geiger purchase markup, storage fee and buyback discount, and the brokerage account fee (36 € p.a., once per client depot, split across the fund products by payments). Returns are stated after the funds' running costs. Changed values are saved with each portfolio, carry over to new clients, and can be shared as a file.
+
 **Advisor profiles:** save contact details once and pick a default. "+ New client" starts the next client with that advisor and the same output settings.
 
 **Client documents:** open a client folder or upload files or folders (drag & drop works too).
@@ -79,7 +81,7 @@ Per-browser data: advisor profiles, custom templates and the last open client ar
 
 ### Calculation conventions
 - Yearly compounding. One-off amounts and the AVD starter bonus are invested at the start. Monthly contributions and subsidies of a year are added at year end. This matches the existing offer PDFs.
-- Funds: returns are after ongoing costs. An optional `entryFee` (front load) is deducted from each contribution.
+- Funds: returns are after running costs. The front load (`entryFee`) is deducted from each payment; the depot fee is charged at year end, once per depot.
 - Metals: purchase markup on each contribution, storage fee p.a. on the value, buyback discount on the final value.
 - AVD:
   - 50 % on the first 360 €, 25 % up to 1,800 € (max 540 €/year).

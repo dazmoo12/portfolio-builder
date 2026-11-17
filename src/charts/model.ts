@@ -21,6 +21,8 @@ export interface PositionView {
   paidIn: number;
   subsidy: number;
   gains: number;
+  /** Costs paid so far (front loads, storage, depot fee). */
+  fees: number;
 }
 
 export interface ViewModel {
@@ -120,6 +122,7 @@ export function buildViewModel(
       paidIn: adj(s.paidIn, yi),
       subsidy: adj(s.subsidy, yi),
       gains: adj(gains(s), yi),
+      fees: adj(s.fees, yi),
     };
   });
 

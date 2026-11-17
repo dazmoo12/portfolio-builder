@@ -197,6 +197,7 @@ export function Preview({ vm, ui, uiLang, warnings, household, onYear, onToggleP
               <th>{t('kpiPaidIn')}</th>
               <th>{t('kpiSubsidy')}</th>
               <th>{t('kpiGains')}</th>
+              <th>{t('costs')}</th>
               <th>
                 {t('value')} {vm.year}
               </th>
@@ -219,6 +220,7 @@ export function Preview({ vm, ui, uiLang, warnings, household, onYear, onToggleP
                 <td>{fmt.eur(p.paidIn)}</td>
                 <td>{fmt.eur(p.subsidy)}</td>
                 <td>{fmt.eur(p.gains)}</td>
+                <td>{fmt.eur(p.fees)}</td>
                 <td>
                   <b>{fmt.eur(p.value)}</b>
                 </td>
@@ -231,6 +233,7 @@ export function Preview({ vm, ui, uiLang, warnings, household, onYear, onToggleP
       <p className="disclaimer">
         {vm.hiddenNames.length > 0 && t('partialNote', { products: vm.hiddenNames.join(', ') }) + ' '}
         {vm.termNote && vm.termNote + ' '}
+        {t('returnsNetNote') + ' '}
         {vm.real && t('reportRealNote', { inflation: fmt.pct(vm.input.inflation) }) + ' '}
         {t('disclaimer')}
       </p>

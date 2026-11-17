@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { baseSubsidy, annualSubsidy } from './avd';
 import { summarizeHousehold } from './household';
 import { ageAtStart, ageOn, validBirthDate } from './person';
-import { clientDisplayName, project, syncTimeline, validateWeights, type Catalog } from './projection';
+import { clientDisplayName, depotFeeShares, project, syncTimeline, validateWeights, type Catalog } from './projection';
 import type { PortfolioInput, Product } from './types';
 
 const avd: Product = {
@@ -155,6 +155,42 @@ describe('date of birth', () => {
     const bonus = (birthDate: string) => project(input(birthDate), catalog).neutral.total[0].subsidy;
     expect(bonus('2002-02-12')).toBe(200); // 24 on 1 Jan 2027
     expect(bonus('2001-12-31')).toBe(0); // 25 on 1 Jan 2027
+  });
+});
+
+describe('fund and AVD costs', () => {
+  const fund: Product = { ...avd, id: 'fund', kind: 'fund', group: 'fund', allowsOneOff: true, entryFee: 0.04, returns: { pessimistic: 0, neutral: 0, optimistic: 0 } };
+  const base = (positions: PortfolioInput['positions'], depotFee = 0): PortfolioInput => ({ ...avdOnly(100, 40, 1), totalMonthly: 100, depotFee, positions });
+
+  it('deducts the front load from every payment', () => {
+    const t = project(base([{ uid: 'f', productId: 'fund', monthlyWeight: 1, oneOffWeight: 0 }]), { fund }).neutral.total[1];
+    expect(t.paidIn).toBe(1200);
+    expect(t.value).toBeCloseTo(1152); // 1,200 € − 4 %
+    expect(t.fees).toBeCloseTo(48);
+  });
+
+  it('charges the AVD 1 % on own contributions only, not on the subsidy', () => {
+    const avdCost = { ...avd, entryFee: 0.01 };
+    const t = project(avdOnly(150, 40, 1), { avd: avdCost }).neutral.total[1];
+    expect(t.value).toBeCloseTo(1800 * 0.99 + 540);
+  });
+
+  it('charges the depot fee once, split across the fund products by payments', () => {
+    const input = base(
+      [
+        { uid: 'a', productId: 'fund', monthlyWeight: 0.75, oneOffWeight: 0 },
+        { uid: 'b', productId: 'fund', monthlyWeight: 0.25, oneOffWeight: 0 },
+      ],
+      36,
+    );
+    const [a, b] = project(input, { fund }).neutral.positions.map((p) => p.series[1].fees);
+    expect(a + b).toBeCloseTo(48 + 36);
+    expect(a).toBeCloseTo(36 + 27);
+    expect(b).toBeCloseTo(12 + 9);
+  });
+
+  it('charges no depot fee for AVD and metals', () => {
+    expect(depotFeeShares({ ...avdOnly(150, 40, 1), depotFee: 36 }, catalog).size).toBe(0);
   });
 });
 

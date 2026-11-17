@@ -93,6 +93,8 @@ export interface PortfolioInput {
   /** Annual increase of the monthly savings amount (Dynamik), e.g. 0.03. */
   dynamicIncrease: number;
   inflation: number;
+  /** Brokerage account fee in € p.a., once per client depot, shared by the fund products. */
+  depotFee?: number;
   positions: Position[];
 }
 

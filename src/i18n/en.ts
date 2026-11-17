@@ -252,6 +252,23 @@ export const en = {
   childYear: 'Birth year',
   applyTimingAll: 'Apply start and term to all products',
   reportTermNote: 'After the end of a contract term its value is shown unchanged, without further returns.',
+
+  // costs
+  secCosts: 'Costs',
+  frontLoad: 'Front load',
+  frontLoadFundNote: 'deducted from every payment',
+  frontLoadAvdNote: 'on own contributions',
+  depotFee: 'Brokerage account fee (€ p.a., once per depot)',
+  depotFeeShort: 'account fee {fee} p.a. per depot',
+  costsNote: 'Front loads are deducted from each payment. The account fee of {fee} p.a. is charged once for all fund products of the client and split by payments.',
+  showAllProducts: 'Show all products',
+  standard: 'Standard',
+  resetDefaults: 'Reset to standard values',
+  exportAssumptions: 'Save values as file',
+  importAssumptions: 'Load values from file',
+  assumptionsImported: 'Values loaded from {name}.',
+  invalidFile: 'This file could not be read.',
+  returnsNetNote: 'Return assumptions are stated after the funds\' running costs.',
 };
 
 export type Dict = typeof en;

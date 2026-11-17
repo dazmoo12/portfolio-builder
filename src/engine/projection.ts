@@ -73,6 +73,8 @@ export function projectPosition(
   position: Position,
   product: Product,
   scenario: ScenarioKey,
+  /** This position's share of the depot fee per year of the timeline (€). */
+  depotFees: number[] = [],
 ): PositionProjection {
   const { monthly, oneOff } = positionAmounts(input, position, product);
   const r = product.returns[scenario];
@@ -133,6 +135,11 @@ export function projectPosition(
         subsidy += s;
         value += s;
       }
+
+      // depot fee at year end, after the year's payments
+      const depotFee = Math.min(depotFees[i] ?? 0, value);
+      fees += depotFee;
+      value -= depotFee;
     }
     // after the term the value stays as it is: no contributions, growth or costs are assumed
     series.push(point(input.startYear + i));
@@ -158,10 +165,36 @@ function sumSeries(positions: PositionProjection[], input: PortfolioInput): Year
   return out;
 }
 
+/**
+ * The depot fee is charged once per client depot. Each year it is split across the fund
+ * contracts running in that year, in proportion to what is paid into each of them.
+ */
+export function depotFeeShares(input: PortfolioInput, catalog: Catalog): Map<string, number[]> {
+  const out = new Map<string, number[]>();
+  const fee = input.depotFee ?? 0;
+  if (fee <= 0) return out;
+  const funds = input.positions
+    .filter((p) => catalog[p.productId]?.kind === 'fund')
+    .map((p) => {
+      const { monthly, oneOff } = positionAmounts(input, p, catalog[p.productId]);
+      const t = positionTiming(input, p);
+      return { uid: p.uid, offset: Math.max(0, t.year - input.startYear), years: t.years, weight: monthly * 12 * t.years + oneOff };
+    })
+    .filter((f) => f.weight > 0);
+  for (const f of funds) out.set(f.uid, new Array(input.horizonYears + 1).fill(0));
+  for (let i = 1; i <= input.horizonYears; i++) {
+    const running = funds.filter((f) => i - f.offset >= 1 && i - f.offset <= f.years);
+    const total = running.reduce((sum, f) => sum + f.weight, 0);
+    for (const f of running) out.get(f.uid)![i] = (fee * f.weight) / total;
+  }
+  return out;
+}
+
 export function projectScenario(input: PortfolioInput, catalog: Catalog, scenario: ScenarioKey): ScenarioProjection {
+  const shares = depotFeeShares(input, catalog);
   const positions = input.positions
     .filter((p) => catalog[p.productId])
-    .map((p) => projectPosition(input, p, catalog[p.productId], scenario));
+    .map((p) => projectPosition(input, p, catalog[p.productId], scenario, shares.get(p.uid)));
   return { scenario, positions, total: sumSeries(positions, input) };
 }
 

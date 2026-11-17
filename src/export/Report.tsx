@@ -3,6 +3,7 @@
 
 import { Chart } from '../charts/Chart';
 import type { HouseholdView } from '../charts/household';
+import { costLine } from '../charts/costs';
 import type { ViewModel } from '../charts/model';
 import { allocationOption, compositionOption, developmentOption, scenarioOption } from '../charts/options';
 import type { Advisor } from '../state';
@@ -226,12 +227,7 @@ export function Report({ vm, advisor, household }: { vm: ViewModel; advisor: Adv
                 <tr key={p.uid}>
                   <td>
                     {p.name}
-                    {p.product.kind === 'metal' && (
-                      <div className="small muted">
-                        {t('entryFee')} {fmt.pct(p.product.entryFee ?? 0)} · {t('annualFee')} {fmt.pct(p.product.annualFee ?? 0)} ·{' '}
-                        {t('exitFee')} {fmt.pct(p.product.exitFee ?? 0)}
-                      </div>
-                    )}
+                    <div className="small muted">{costLine(p.product, input.depotFee ?? 0, t, fmt)}</div>
                   </td>
                   <td>{fmt.pct(p.product.returns.pessimistic)}</td>
                   <td>{fmt.pct(p.product.returns.neutral)}</td>
@@ -240,6 +236,7 @@ export function Report({ vm, advisor, household }: { vm: ViewModel; advisor: Adv
               ))}
             </tbody>
           </table>
+          <p className="small muted">{t('returnsNetNote')}</p>
         </div>
 
         <div className="r-contact">

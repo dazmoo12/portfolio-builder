@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { buildHouseholdView } from './charts/household';
 import { buildViewModel } from './charts/model';
 import { catalog } from './catalog';
+import { applyAssumptions } from './catalog/assumptions';
 import { hasHouseholdData } from './engine/household';
 import { project, validateWeights } from './engine/projection';
 import type { Lang } from './engine/types';
@@ -19,7 +20,8 @@ import { OutputSection } from './ui/OutputSection';
 import { FolderSection } from './ui/FolderSection';
 import { HouseholdSection } from './ui/HouseholdSection';
 import { Preview } from './ui/Preview';
-import { AmountsSection, AssumptionsSection, ClientSection, PositionsSection, PresetSection, Section } from './ui/Settings';
+import { AssumptionsSection, CostsSection } from './ui/AssumptionsSection';
+import { AmountsSection, ClientSection, PositionsSection, PresetSection, Section } from './ui/Settings';
 
 export default function App() {
   const { state, setState, update, updateInput } = useAppState();
@@ -36,7 +38,12 @@ export default function App() {
   const t = makeT(state.uiLang);
   const fmt = makeFormat(state.uiLang);
 
-  const projection = useMemo(() => project(state.input, catalog), [state.input]);
+  // the catalogue with the team's return and cost values
+  const products = useMemo(() => applyAssumptions(catalog, state.assumptions), [state.assumptions]);
+  const projection = useMemo(
+    () => project({ ...state.input, depotFee: state.assumptions.depotFee }, products),
+    [state.input, products, state.assumptions.depotFee],
+  );
   const vm = useMemo(
     () => buildViewModel(state.input, projection, theme, state.reportLang, state.yearIndex, state.real, state.output),
     [state.input, projection, theme, state.reportLang, state.yearIndex, state.real, state.output],
@@ -45,7 +52,7 @@ export default function App() {
     () => (state.includeHousehold && hasHouseholdData(state.household) ? buildHouseholdView(state, vm) : undefined),
     [state, vm],
   );
-  const check = useMemo(() => validateWeights(state.input, catalog), [state.input]);
+  const check = useMemo(() => validateWeights(state.input, products), [state.input, products]);
   const warnings = useMemo(
     () => (household && household.summary.reserve < 0 ? [...check.warnings, { key: 'overBudget' as const }] : check.warnings),
     [check, household],
@@ -159,7 +166,8 @@ export default function App() {
           <AmountsSection {...props} />
           <PresetSection {...props} />
           <PositionsSection {...props} />
-          <AssumptionsSection {...props} />
+          <AssumptionsSection {...props} products={products} />
+          <CostsSection {...props} products={products} />
           <OutputSection t={t} output={state.output} onChange={(output) => update({ output })} />
           <DesignSection t={t} theme={theme} themes={themes} onSelect={(id) => update({ themeId: id })} onSave={saveTheme} onDelete={deleteTheme} />
           <Section title={t('secExport')}>

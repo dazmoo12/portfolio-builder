@@ -4,6 +4,8 @@ import type { Localized, Position, Product } from '../engine/types';
 import type { Catalog } from '../engine/projection';
 
 export const products = productsJson.products as Product[];
+/** Brokerage account fee in € p.a., once per client depot. */
+export const defaultDepotFee: number = productsJson.depotFeePerYear;
 export const catalog: Catalog = Object.fromEntries(products.map((p) => [p.id, p]));
 
 export interface Preset {

@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { defaultAdvisor } from './advisors';
 import { newUid, presetPositions, presets } from './catalog';
+import { defaultAssumptions, type Assumptions } from './catalog/assumptions';
 import type { Household } from './engine/household';
 import { positionTiming, syncTimeline } from './engine/projection';
 import type { Adult, Child, Client, Lang, PortfolioInput, ScenarioKey } from './engine/types';
@@ -44,6 +45,8 @@ export interface AppState {
   /** Show the household budget page in preview and exports. */
   includeHousehold: boolean;
   advisor: Advisor;
+  /** Editable returns and costs; saved with the portfolio so it always shows the same numbers. */
+  assumptions: Assumptions;
   output: OutputSettings;
   uiLang: Lang;
   reportLang: Lang;
@@ -87,6 +90,7 @@ export function defaultState(): AppState {
     },
     includeHousehold: true,
     advisor: defaultAdvisor() ?? { name: 'Max Mustermann', office: 'Vermögensberatung Musterstadt', phone: '+49 30 000000', email: 'max.mustermann@example.com' },
+    assumptions: defaultAssumptions(),
     output: defaultOutput(),
     uiLang: 'de',
     reportLang: 'de',
@@ -106,6 +110,8 @@ export function newClientState(prev: AppState, clientName = ''): AppState {
     ...fresh,
     advisor: defaultAdvisor() ?? prev.advisor,
     output: { ...prev.output, hidden: [] },
+    // the team's values carry over to the next client
+    assumptions: prev.assumptions,
     uiLang: prev.uiLang,
     reportLang: prev.reportLang,
     themeId: prev.themeId,
@@ -149,6 +155,7 @@ export function migrateState(raw: unknown): AppState | null {
     household: s.household ?? { income: [], expenses: [] },
     includeHousehold: s.includeHousehold ?? !!s.household,
     output: { ...defaultOutput(), ...s.output, charts: { ...defaultOutput().charts, ...s.output?.charts } },
+    assumptions: s.assumptions ?? defaultAssumptions(),
   } as AppState;
 }
 

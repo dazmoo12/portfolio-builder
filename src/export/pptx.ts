@@ -3,6 +3,7 @@
 
 import PptxGenJS from 'pptxgenjs';
 import type { HouseholdView } from '../charts/household';
+import { costLine } from '../charts/costs';
 import type { ViewModel } from '../charts/model';
 import { SCENARIOS } from '../engine/types';
 import type { Advisor } from '../state';
@@ -337,16 +338,16 @@ export async function exportPptx(vm: ViewModel, advisor: Advisor, household?: Ho
         { text: fmt.pct(p.product.returns.optimistic) },
         {
           text:
-            p.product.kind === 'metal'
-              ? `${t('entryFee')} ${fmt.pct(p.product.entryFee ?? 0)} · ${t('annualFee')} ${fmt.pct(p.product.annualFee ?? 0)} · ${t('exitFee')} ${fmt.pct(p.product.exitFee ?? 0)}`
-              : '–',
+            costLine(p.product, input.depotFee ?? 0, t, fmt),
         },
       ]);
     s.addTable([head, ...rows], {
       x: 0.6, y: 1.5, w: 12.13, colW: [3.8, 1.3, 1.3, 1.3, 4.43], fontFace: B, fontSize: 10, color: hex(c.text),
       border: { type: 'solid', color: 'E3E7EC', pt: 0.5 }, rowH: 0.34, valign: 'middle',
     });
-    let y = 1.6 + (rows.length + 1) * 0.36 + 0.3;
+    let y = 1.6 + (rows.length + 1) * 0.36 + 0.1;
+    s.addText(t('returnsNetNote'), { x: 0.6, y, w: 12.13, h: 0.3, fontFace: B, fontSize: 10, color: hex(c.muted) });
+    y += 0.45;
     if (vm.real) {
       s.addText(t('reportRealNote', { inflation: fmt.pct(input.inflation) }), { x: 0.6, y, w: 12.13, h: 0.35, fontFace: B, fontSize: 11, color: hex(c.text) });
       y += 0.45;
