@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { catalog, newUid, presetPositions, presets, products } from '../catalog';
 import { ageOn, ageToday, childBirthYear, validBirthDate, type Person } from '../engine/person';
-import { positionOwner, positionTiming, validateWeights } from '../engine/projection';
+import { childBonusOwner, positionOwner, positionTiming, validateWeights } from '../engine/projection';
 import type { Adult, Child, PortfolioInput, Position, ProductGroup } from '../engine/types';
 import type { T, Format } from '../i18n';
 import type { AppState } from '../state';
@@ -127,7 +127,7 @@ export function ClientSection({ state, t, updateInput }: Props) {
               onClick={() =>
                 setClient({
                   adults: client.adults.filter((x) => x.id !== a.id),
-                  childBonusOwner: client.childBonusOwner === a.id ? undefined : client.childBonusOwner,
+                  children: client.children.map((c) => (c.bonusOwner === a.id ? { ...c, bonusOwner: undefined } : c)),
                 })
               }
             >
@@ -148,7 +148,7 @@ export function ClientSection({ state, t, updateInput }: Props) {
       <div className="field">
         <span>{t('children')}</span>
         {client.children.map((c) => (
-          <div className="child-row" key={c.id}>
+          <div className={`child-row ${client.adults.length ? 'with-owner' : ''}`} key={c.id}>
             <input
               type="date"
               aria-label={t('field_birthDate')}
@@ -166,6 +166,21 @@ export function ClientSection({ state, t, updateInput }: Props) {
               value={childBirthYear(c) ?? ''}
               onChange={(e) => setChild(c.id, { birthYear: Number(e.target.value) || undefined })}
             />
+            {client.adults.length > 0 && (
+              <select
+                aria-label={t('childBonusFor')}
+                title={t('childBonusFor')}
+                value={childBonusOwner(client, c)}
+                onChange={(e) => setChild(c.id, { bonusOwner: e.target.value })}
+              >
+                <option value="primary">{client.name || t('clientName')}</option>
+                {client.adults.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {adultLabel(a)}
+                  </option>
+                ))}
+              </select>
+            )}
             <button className="icon" aria-label={t('remove')} title={t('remove')} onClick={() => setClient({ children: client.children.filter((x) => x.id !== c.id) })}>
               ×
             </button>
@@ -176,19 +191,7 @@ export function ClientSection({ state, t, updateInput }: Props) {
         </button>
       </div>
 
-      {client.adults.length > 0 && client.children.length > 0 && (
-        <label className="field">
-          <span>{t('childBonusFor')}</span>
-          <select value={client.childBonusOwner ?? 'primary'} onChange={(e) => setClient({ childBonusOwner: e.target.value })}>
-            <option value="primary">{client.name || t('clientName')}</option>
-            {client.adults.map((a) => (
-              <option key={a.id} value={a.id}>
-                {adultLabel(a)}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
+      {client.adults.length > 0 && client.children.length > 0 && <p className="hint">{t('childBonusHint')}</p>}
     </Section>
   );
 }

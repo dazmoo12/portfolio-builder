@@ -11,6 +11,7 @@ import { adultOwner, ageAtContractStart, childBirthYear } from './person';
 import {
   SCENARIOS,
   type PortfolioInput,
+  type Child,
   type Client,
   type Owner,
   type Position,
@@ -49,11 +50,17 @@ export function ownerAge(input: PortfolioInput, position: Position): number {
   return ageAtContractStart(adultOwner(input.client, position.owner) ?? input.client, year, month, input.startYear);
 }
 
-/** Children count for the AVD of the parent receiving the child bonus only. */
+/** Parent receiving the child bonus for a child; the client if the parent was removed. */
+export function childBonusOwner(client: Client, child: Child): Owner {
+  return adultOwner(client, child.bonusOwner)?.id ?? 'primary';
+}
+
+/** Each child counts only for the AVD of the parent receiving its child bonus. */
 function childYearsFor(client: Client, owner: Owner): number[] {
-  const bonusOwner = adultOwner(client, client.childBonusOwner)?.id ?? 'primary';
-  if (owner !== bonusOwner) return [];
-  return client.children.map(childBirthYear).filter((y): y is number => y !== undefined);
+  return client.children
+    .filter((c) => childBonusOwner(client, c) === owner)
+    .map(childBirthYear)
+    .filter((y): y is number => y !== undefined);
 }
 
 export function clientDisplayName(client: Client): string {

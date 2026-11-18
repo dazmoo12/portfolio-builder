@@ -16,6 +16,7 @@ import { builtInThemes, loadCustomThemes, saveCustomThemes, type Theme } from '.
 import { AdvisorSection } from './ui/AdvisorSection';
 import { DesignSection } from './ui/DesignSection';
 import { DocumentsView } from './ui/DocumentsView';
+import { JourneySection } from './ui/JourneySection';
 import { OutputSection } from './ui/OutputSection';
 import { FolderSection } from './ui/FolderSection';
 import { HouseholdSection } from './ui/HouseholdSection';
@@ -169,6 +170,12 @@ export default function App() {
           <AssumptionsSection {...props} products={products} />
           <CostsSection {...props} products={products} />
           <OutputSection t={t} output={state.output} onChange={(output) => update({ output })} />
+          <JourneySection
+            t={t}
+            journey={state.output.journey}
+            avds={vm.allPositions.filter((p) => p.kind === 'avd')}
+            onChange={(journey) => update({ output: { ...state.output, journey } })}
+          />
           <DesignSection t={t} theme={theme} themes={themes} onSelect={(id) => update({ themeId: id })} onSave={saveTheme} onDelete={deleteTheme} />
           <Section title={t('secExport')}>
             <label className="field">

@@ -335,3 +335,21 @@ input.budget-label { border: 1px solid var(--ui-line); border-radius: 6px; paddi
 .mini { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--ui-muted); min-width: 0; }
 .mini .input-wrap input { padding: 4px 6px; font-size: 13px; }
 .mini-note { grid-column: span 2; align-self: center; }
+.child-row.with-owner { grid-template-columns: minmax(0, 1fr) 72px minmax(0, 1fr) 24px; }
+.child-row select { border: 1px solid var(--ui-line); border-radius: 6px; padding: 6px 4px; background: #fff; color: var(--ui-text); font-size: 13px; min-width: 0; }
+
+/* ---------- money journey ---------- */
+.journey { display: flex; flex-direction: column; gap: 10px; }
+.journey-meta { font-size: 12px; color: var(--t-muted); }
+.journey-meta b { color: var(--t-text); }
+.journey-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.journey-kpis > div { border: 1px solid #e3e7ec; border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+.journey-kpis span { font-size: 11px; color: var(--t-muted); }
+.journey-kpis strong { font-family: var(--t-font-heading); font-size: 20px; font-variant-numeric: tabular-nums; }
+.journey-kpis em { font-style: normal; font-size: 11px; color: var(--t-muted); }
+.journey-kpis .hero { background: var(--t-accent); border-color: var(--t-accent); }
+.journey-kpis .hero span, .journey-kpis .hero strong { color: var(--t-primary); }
+.journey-note { font-size: 11px; color: var(--t-muted); margin: 0; line-height: 1.5; }
+.journey.print .journey-kpis strong { font-size: 15px; }
+.journey.print .journey-kpis > div { padding: 2.5mm 3mm; }
+@media (max-width: 960px) { .journey:not(.print) .journey-kpis { grid-template-columns: 1fr 1fr; } }

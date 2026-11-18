@@ -11,7 +11,7 @@ describe('saved portfolios from older versions', () => {
         ...s.input,
         startYear: 2028,
         horizonYears: 20,
-        client: { name: client.name, age: 32, childrenBirthYears: [2021], partner: { name: 'Max', age: 40 } },
+        client: { name: client.name, age: 32, childrenBirthYears: [2021], partner: { name: 'Max', age: 40 }, childBonusOwner: 'partner' },
         positions: [{ uid: 'a', productId: 'avd', monthlyWeight: 0.5, oneOffWeight: 0, owner: 'partner' }],
       },
     };
@@ -20,7 +20,7 @@ describe('saved portfolios from older versions', () => {
   it('keeps partner, children and the common start and duration', () => {
     const { input } = migrateState(old())!;
     expect(input.client.adults).toEqual([{ id: 'partner', name: 'Max', age: 40 }]);
-    expect(input.client.children.map((c) => c.birthYear)).toEqual([2021]);
+    expect(input.client.children.map((c) => [c.birthYear, c.bonusOwner])).toEqual([[2021, 'partner']]);
     expect(input.positions[0]).toMatchObject({ owner: 'partner', start: '2028-01', years: 20 });
     expect([input.startYear, input.horizonYears]).toEqual([2028, 20]);
   });

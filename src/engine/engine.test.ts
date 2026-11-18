@@ -76,12 +76,22 @@ describe('several adults', () => {
     expect(subsidy(two())).toEqual([1040, 540]);
   });
 
-  it('counts a child only for the parent receiving the child bonus', () => {
-    expect(subsidy(two({ childBonusOwner: 'max' }))).toEqual([740, 840]);
+  it('counts a child only for the parent receiving its child bonus', () => {
+    expect(subsidy(two({ children: [{ id: 'k', birthYear: 2027, bonusOwner: 'max' }] }))).toEqual([740, 840]);
+  });
+
+  it('splits children between the parents individually', () => {
+    const kids = [
+      { id: 'k1', birthYear: 2027 },
+      { id: 'k2', birthYear: 2025, bonusOwner: 'max' },
+      { id: 'k3', birthYear: 2020, bonusOwner: 'max' },
+    ];
+    // client: own child bonus for k1; Max: k2 and k3
+    expect(subsidy(two({ children: kids }))).toEqual([1040, 1140]);
   });
 
   it('falls back to the client when the adult is removed', () => {
-    const input = { ...two(), client: { ...two().client, adults: [], childBonusOwner: 'max' } };
+    const input = { ...two(), client: { ...two().client, adults: [], children: [{ id: 'k', birthYear: 2027, bonusOwner: 'max' }] } };
     expect(subsidy(input)).toEqual([1040, 1040]);
     expect(validateWeights(input, catalog).warnings.map((w) => w.key)).toContain('avdDuplicate');
   });

@@ -4,6 +4,7 @@
 import PptxGenJS from 'pptxgenjs';
 import type { HouseholdView } from '../charts/household';
 import { costLine } from '../charts/costs';
+import { journeyNotes } from '../ui/JourneyBlock';
 import type { ViewModel } from '../charts/model';
 import { SCENARIOS } from '../engine/types';
 import type { Advisor } from '../state';
@@ -248,6 +249,56 @@ export async function exportPptx(vm: ViewModel, advisor: Advisor, household?: Ho
       },
     );
     disclaimer(s);
+  }
+
+  // 3b · Money journey: saving phase stacked by source, then the remaining capital in the payout phase
+  if (vm.journey) {
+    const j = vm.journey;
+    const s = pptx.addSlide({ masterName: 'CONTENT' });
+    title(s, `${t('savingPhase')} · ${t('payoutPhase')}`, `${t('journeyTitle')} · ${j.title}`);
+    const labels = j.ages.map(String);
+    const z = (arr: (number | null)[]) => arr.map((v) => Math.round(v ?? 0));
+    const payoutIdx = j.ages.indexOf(j.payoutAge);
+    // the stacked area would add the payout start twice: the capital series starts one year later
+    const capital = j.capital.map((v, i) => (i <= payoutIdx ? 0 : Math.round(v ?? 0)));
+    s.addChart(
+      pptx.ChartType.area,
+      [
+        { name: t('kpiPaidIn'), labels, values: z(j.own) },
+        { name: t('kpiSubsidy'), labels, values: z(j.subsidy) },
+        { name: t('kpiGains'), labels, values: z(j.growth) },
+        { name: t('remainingCapital'), labels, values: capital },
+      ],
+      {
+        x: 0.6, y: 1.45, w: 8.6, h: 4.3, barGrouping: 'stacked',
+        chartColors: ['9DB8D9', hex(c.accent), hex(c.primary), hex(c.accent2)],
+        showLegend: true, legendPos: 'b', legendFontSize: 10, legendColor: hex(c.text),
+        valAxisLabelFormatCode: valFmt, valAxisLabelFontSize: 9, catAxisLabelFontSize: 9,
+        valAxisLabelColor: hex(c.muted), catAxisLabelColor: hex(c.muted),
+        valGridLine: { color: 'EEF0F3', size: 0.5 }, catAxisLabelFrequency: '5',
+        ...chartFont,
+      },
+    );
+    const facts: [string, string][] = [
+      [t('kpiYouPay'), fmt.eur(j.totals.paidIn)],
+      [`${t('kpiValue')} ${j.payoutAge}`, fmt.eur(j.capitalAtStart)],
+      [t('kpiLump'), fmt.eur(j.totals.lumpSum)],
+      [t('kpiMonthlyTotal', { from: String(j.payoutAge), to: String(j.endAge) }), fmt.eur(j.totals.payouts)],
+      [t('kpiTotalOut'), fmt.eur(j.totals.total)],
+    ];
+    facts.forEach(([label, value], i) => {
+      const y = 1.45 + i * 0.62;
+      const last = i === facts.length - 1;
+      s.addShape(pptx.ShapeType.rect, { x: 9.5, y, w: 3.23, h: 0.54, fill: { color: hex(last ? c.primary : c.surface) } });
+      const col = hex(last ? onColor(c.primary) : c.text);
+      s.addText(label, { x: 9.6, y, w: 1.9, h: 0.54, fontFace: B, fontSize: 9, color: col, valign: 'middle' });
+      s.addText(value, { x: 11.3, y, w: 1.35, h: 0.54, fontFace: H, fontSize: 12, bold: true, color: col, align: 'right', valign: 'middle' });
+    });
+    s.addText(
+      j.steps.map((st) => `${t('ageAt')} ${st.age}: ${fmt.eur(st.monthly)}${t('perMonth')}`).join('\n'),
+      { x: 9.5, y: 4.65, w: 3.23, h: 1.15, fontFace: B, fontSize: 9, color: hex(c.text), valign: 'top' },
+    );
+    s.addText(`${journeyNotes(vm, j).join(' ')} ${t('disclaimer')}`, { x: 0.6, y: 5.95, w: 12.13, h: 0.8, fontFace: B, fontSize: 7, color: hex(c.muted), valign: 'top' });
   }
 
   // 4 · Scenarios: lines over time + bars at selected year

@@ -8,6 +8,7 @@ import type { ViewModel } from '../charts/model';
 import { allocationOption, compositionOption, developmentOption, scenarioOption } from '../charts/options';
 import type { Advisor } from '../state';
 import { HouseholdBlock } from '../ui/HouseholdBlock';
+import { JourneyBlock } from '../ui/JourneyBlock';
 import { themeVars } from '../ui/themeVars';
 
 const print = { animation: false, compact: true };
@@ -182,6 +183,23 @@ export function Report({ vm, advisor, household }: { vm: ViewModel; advisor: Adv
         {footer(1)}
       </section>
 
+      {/* Money journey */}
+      {vm.journey && (
+        <section className="r-page">
+          <header className="r-head">
+            <div>
+              <div className="kicker">{t('reportKicker')}</div>
+              <h1>{t('journeyTitle')}</h1>
+            </div>
+            {vm.theme.logo && <img className="logo" src={vm.theme.logo} alt="" />}
+          </header>
+          <div className="r-card">
+            <JourneyBlock vm={vm} j={vm.journey} print />
+          </div>
+          {footer(2)}
+        </section>
+      )}
+
       {/* Page 2 – development, scenarios, assumptions */}
       <section className="r-page">
         {charts.development && (
@@ -253,7 +271,7 @@ export function Report({ vm, advisor, household }: { vm: ViewModel; advisor: Adv
           {vm.real && t('reportRealNote', { inflation: fmt.pct(input.inflation) }) + ' '}
           {t('disclaimer')}
         </p>
-        {footer(2)}
+        {footer(vm.journey ? 3 : 2)}
       </section>
     </div>
   );

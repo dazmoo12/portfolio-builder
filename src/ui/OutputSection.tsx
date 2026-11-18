@@ -9,7 +9,7 @@ interface Props {
   onChange: (o: OutputSettings) => void;
 }
 
-const CHARTS: ChartId[] = ['development', 'allocation', 'composition', 'scenarios'];
+const CHARTS: ChartId[] = ['development', 'journey', 'allocation', 'composition', 'scenarios'];
 
 export function OutputSection({ t, output, onChange }: Props) {
   const set = (patch: Partial<OutputSettings>) => onChange({ ...output, ...patch });

@@ -7,6 +7,7 @@ import { SCENARIOS, type Lang, type PortfolioInput, type PositionProjection, typ
 import { makeFormat, makeT, type Format, type T } from '../i18n';
 import type { OutputSettings } from '../state';
 import type { Theme } from '../templates/themes';
+import { buildJourney, type JourneyView } from './journey';
 
 export interface PositionView {
   uid: string;
@@ -51,7 +52,7 @@ export interface ViewModel {
   /** The positions shown; everything below refers to these only. */
   positions: PositionView[];
   /** Every position, for the product selection and chart legends. */
-  allPositions: { uid: string; name: string; color: string; visible: boolean }[];
+  allPositions: { uid: string; name: string; color: string; visible: boolean; kind: Product['kind'] }[];
   hiddenNames: string[];
   amounts: { monthly: number; oneOff: number };
   /** value etc. refer to the displayed scenario; pessimistic/neutral/optimistic are the totals of all scenarios. */
@@ -62,6 +63,8 @@ export interface ViewModel {
     paidIn: number[];
   };
   hasAvd: boolean;
+  /** Saving and payout phase; only built when the chart is switched on. */
+  journey?: JourneyView;
 }
 
 const OVERFLOW_COLOR = '#8C939D';
@@ -171,7 +174,7 @@ export function buildViewModel(
     ageAtYear: ages(yi),
     years: range.map((i) => input.startYear + i),
     positions,
-    allPositions: all.map((a) => ({ uid: a.p.position.uid, name: a.name, color: a.color, visible: a.visible })),
+    allPositions: all.map((a) => ({ uid: a.p.position.uid, name: a.name, color: a.color, visible: a.visible, kind: a.p.product.kind })),
     hiddenNames: all.filter((a) => !a.visible).map((a) => a.name),
     amounts: { monthly: positions.reduce((a, p) => a + p.monthly, 0), oneOff: positions.reduce((a, p) => a + p.oneOff, 0) },
     kpi: {
@@ -189,5 +192,16 @@ export function buildViewModel(
       paidIn: range.map((i) => adj(sumAt(scenario, i, (s) => s.paidIn + s.subsidy), i)),
     },
     hasAvd: positions.some((p) => p.product.kind === 'avd'),
+    journey: output.charts.journey
+      ? buildJourney(
+          input,
+          projection,
+          output,
+          real,
+          all.map((a) => ({ uid: a.p.position.uid, name: a.name, visible: a.visible })),
+          t('journeyPortfolio'),
+          wSum > 0 ? rSum / wSum : 0,
+        )
+      : undefined,
   };
 }

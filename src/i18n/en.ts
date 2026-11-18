@@ -269,6 +269,31 @@ export const en = {
   assumptionsImported: 'Values loaded from {name}.',
   invalidFile: 'This file could not be read.',
   returnsNetNote: 'Return assumptions are stated after the funds\' running costs.',
+  childBonusHint: 'The last column sets which parent receives the child bonus for each child.',
+
+  // money journey
+  chart_journey: 'Money journey (saving and payout)',
+  secJourney: 'Money journey (payout phase)',
+  journeyTitle: 'Your money journey',
+  journeyFor: 'Journey for',
+  journeyPortfolio: 'Whole portfolio',
+  lumpSum: 'Lump sum at payout start',
+  payoutReturn: 'Return in payout phase',
+  payoutEndAge: 'Payouts until age',
+  recalcNote: 'The monthly payout is set when payouts start and recalculated every 3 years; the remaining capital is used up by the end age.',
+  journeyWaits: 'Payouts start at 65 at the earliest; until then the capital stays unchanged.',
+  journeyTooLate: 'Under the AVD rules, payouts must start by age 70.',
+  journeyTaxNote: 'Amounts before tax; no costs assumed in the payout phase.',
+  savingPhase: 'Saving phase',
+  payoutPhase: 'Payout phase',
+  avgPa: 'avg. {rate} p.a.',
+  remainingCapital: 'Remaining capital',
+  ageAxis: 'Age',
+  perMonth: '/mo',
+  kpiYouPay: 'You pay in',
+  kpiLump: 'Lump sum',
+  kpiMonthlyTotal: 'Monthly payouts {from}–{to}',
+  kpiTotalOut: 'Total paid out',
 };
 
 export type Dict = typeof en;

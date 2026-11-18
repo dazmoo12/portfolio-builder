@@ -67,6 +67,8 @@ export interface Child {
   birthDate?: string;
   /** Used only while no date of birth is known. */
   birthYear?: number;
+  /** Parent receiving the AVD child bonus for this child ('primary' or an adult's id). */
+  bonusOwner?: Owner;
 }
 
 export interface Client {
@@ -79,8 +81,6 @@ export interface Client {
   children: Child[];
   /** Further adults in the household, e.g. a partner or a grown-up child. */
   adults: Adult[];
-  /** Parent who receives the AVD child bonus (each child counts once). */
-  childBonusOwner?: Owner;
 }
 
 export interface PortfolioInput {

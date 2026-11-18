@@ -16,7 +16,16 @@ export interface Advisor {
   email: string;
 }
 
-export type ChartId = 'development' | 'allocation' | 'scenarios' | 'composition';
+export type ChartId = 'development' | 'allocation' | 'scenarios' | 'composition' | 'journey';
+
+/** Money journey: which money and the payout-phase settings. */
+export interface JourneyOutput {
+  /** Uid of an AVD position, 'portfolio' for all shown products, 'auto' for the first AVD. */
+  target: string;
+  lumpSum: number;
+  payoutReturn: number;
+  endAge: number;
+}
 
 /** What the client output (preview, PDF, PPTX) shows – kept simple for print. */
 export interface OutputSettings {
@@ -26,15 +35,17 @@ export interface OutputSettings {
   /** Also draw the other scenarios as lines in the development curve. */
   showRange: boolean;
   allocationStyle: 'donut' | 'bar';
+  journey: JourneyOutput;
   /** Positions switched off by the advisor: figures, charts and exports leave them out. */
   hidden: string[];
 }
 
 export const defaultOutput = (): OutputSettings => ({
-  charts: { development: true, allocation: true, scenarios: false, composition: true },
+  charts: { development: true, allocation: true, scenarios: false, composition: true, journey: true },
   scenario: 'neutral',
   showRange: false,
   allocationStyle: 'donut',
+  journey: { target: 'auto', lumpSum: 0.3, payoutReturn: 0.04, endAge: 85 },
   hidden: [],
 });
 
@@ -109,7 +120,7 @@ export function newClientState(prev: AppState, clientName = ''): AppState {
   return {
     ...fresh,
     advisor: defaultAdvisor() ?? prev.advisor,
-    output: { ...prev.output, hidden: [] },
+    output: { ...prev.output, hidden: [], journey: { ...prev.output.journey, target: 'auto' } },
     // the team's values carry over to the next client
     assumptions: prev.assumptions,
     uiLang: prev.uiLang,
@@ -122,12 +133,14 @@ export function newClientState(prev: AppState, clientName = ''): AppState {
 
 const KEY = 'portfolio-builder.state.v1';
 
-type OldClient = Partial<Client> & { childrenBirthYears?: number[]; partner?: Omit<Adult, 'id'> };
+type OldClient = Partial<Client> & { childrenBirthYears?: number[]; partner?: Omit<Adult, 'id'>; childBonusOwner?: string };
 
 /** Saved clients had one optional partner and children's birth years only. */
 function migrateClient(c: OldClient): Client {
-  const { childrenBirthYears, partner, ...client } = c;
-  const children: Child[] = c.children ?? (childrenBirthYears ?? []).map((birthYear) => ({ id: newUid(), birthYear }));
+  const { childrenBirthYears, partner, childBonusOwner, ...client } = c;
+  const known: Child[] = c.children ?? (childrenBirthYears ?? []).map((birthYear) => ({ id: newUid(), birthYear }));
+  // the child bonus used to be assigned for all children at once
+  const children = known.map((k) => (childBonusOwner && !k.bonusOwner ? { ...k, bonusOwner: childBonusOwner } : k));
   // the id 'partner' keeps saved AVD assignments valid
   const adults: Adult[] = c.adults ?? (partner ? [{ ...partner, id: 'partner' }] : []);
   return { ...client, children, adults } as Client;
@@ -154,7 +167,12 @@ export function migrateState(raw: unknown): AppState | null {
     input: migrateInput(s.input),
     household: s.household ?? { income: [], expenses: [] },
     includeHousehold: s.includeHousehold ?? !!s.household,
-    output: { ...defaultOutput(), ...s.output, charts: { ...defaultOutput().charts, ...s.output?.charts } },
+    output: {
+      ...defaultOutput(),
+      ...s.output,
+      charts: { ...defaultOutput().charts, ...s.output?.charts },
+      journey: { ...defaultOutput().journey, ...s.output?.journey },
+    },
     assumptions: s.assumptions ?? defaultAssumptions(),
   } as AppState;
 }

@@ -29,6 +29,10 @@ Languages: DE / EN / PT. The language switch changes interface and document toge
 
 **Assumptions and costs (left panel):** return assumptions per scenario and costs per product are editable: front load (funds 4 %, AVD 1 % on own contributions, both deducted from each payment), Geiger purchase markup, storage fee and buyback discount, and the brokerage account fee (36 € p.a., once per client depot, split across the fund products by payments). Returns are stated after the funds' running costs. Changed values are saved with each portfolio, carry over to new clients, and can be shared as a file.
 
+**Money journey:** saving phase (own contributions, subsidy, growth) and payout phase in one chart, for an AVD (per person) or the whole portfolio. Payout settings in the left panel: lump sum at payout start (up to 30 %, default 30 %), return in the payout phase (default 4 %), payouts until age 85. Payouts start when the contract ends, at 65 at the earliest; the monthly amount is set at the start and recalculated every 3 years, using up the capital by the end age. Amounts before tax, no costs in the payout phase. Shown in the preview, as its own PDF page and PowerPoint slide.
+
+**Children** are assigned individually to the parent receiving their child bonus.
+
 **Advisor profiles:** save contact details once and pick a default. "+ New client" starts the next client with that advisor and the same output settings.
 
 **Client documents:** open a client folder or upload files or folders (drag & drop works too).
@@ -40,6 +44,8 @@ Languages: DE / EN / PT. The language switch changes interface and document toge
 - A demo folder with fictional documents is in `demo/Kundenordner_Anna_Beispiel` (regenerate with `npx vite-node scripts/make-demo-folder.ts`).
 
 Everything runs locally in the browser. No client data leaves the machine; state is kept in the browser and in "Save portfolio" files.
+
+See [CHANGELOG.md](CHANGELOG.md) for all changes.
 
 ## Run
 

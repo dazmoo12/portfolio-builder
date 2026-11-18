@@ -8,6 +8,7 @@ import { catalog } from '../catalog';
 import type { Warning } from '../engine/projection';
 import type { T } from '../i18n';
 import { HouseholdBlock } from './HouseholdBlock';
+import { JourneyBlock } from './JourneyBlock';
 import { themeVars } from './themeVars';
 
 interface Props {
@@ -159,6 +160,13 @@ export function Preview({ vm, ui, uiLang, warnings, household, onYear, onToggleP
             {t('chartDevelopment')} <span className="sub">· {scenarioNote}</span>
           </h2>
           <Chart option={dev} height={320} onLegendToggle={toggleByName} />
+        </div>
+      )}
+
+      {vm.journey && (
+        <div className="card">
+          <h2>{t('journeyTitle')}</h2>
+          <JourneyBlock vm={vm} j={vm.journey} />
         </div>
       )}
 
