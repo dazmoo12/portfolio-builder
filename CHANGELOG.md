@@ -2,6 +2,18 @@
 
 All changes to the Portfolio Builder, newest first. Live site: https://personal-investment-plan.netlify.app (deploys automatically from `main`).
 
+## 2026-11-25 (2) – Switching seamlessly between clients
+
+- **Client selector in the top bar:** every saved client is one click away, also on the phone.
+- **Nothing is dropped on a switch:** clients without a name are kept too ("(ohne Namen)") as soon as anything is entered; only an untouched new client is not listed.
+- **Last change, not last opening:** a client counts as changed only when its content changes (not the time slider or language). The list is sorted by that time.
+- **Client folder saves itself:** while a folder is open, every change is written to its `portfolio.json` about 1.5 seconds later. The folder line shows "automatisch gespeichert 14:05".
+- **Older files never overwrite newer work:** portfolio files now carry the time of their last change.
+  - When a folder is opened or a `portfolio.json` is uploaded, the tool compares the file with the browser's copy and uses the newer one.
+  - For older files without a time that differ from the browser copy, it asks.
+- **Several tabs:** each tab keeps its own client on reload, and the client lists update across tabs.
+  - If the same client is changed in another tab, a notice offers "Diesen Stand übernehmen" or "Hier weiterarbeiten".
+
 ## 2026-11-25 – Saved clients, subsidy split, grown-up children, payout from 65
 
 **Saved clients**

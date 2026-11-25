@@ -1,9 +1,9 @@
 // App state: the portfolio input plus presentation settings. Serialisable as a
 // "portfolio file" (save/load) – later the same JSON can come from a CRM.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { defaultAdvisor } from './advisors';
-import { clientIdByName, newClientId, saveClient } from './clients';
+import { clientIdByName, getClient, newClientId, saveClient } from './clients';
 import { newUid, presetPositions, presets } from './catalog';
 import { defaultAssumptions, type Assumptions } from './catalog/assumptions';
 import type { Household } from './engine/household';
@@ -56,6 +56,10 @@ export interface AppState {
   version: 1;
   /** Identifies the client in the browser's list of saved clients. */
   clientId: string;
+  /** Time of the last change, written into portfolio files to tell older from newer copies. */
+  updatedAt?: string;
+  /** A new client nothing has been entered for yet; not worth keeping in the list. */
+  pristine?: boolean;
   input: PortfolioInput;
   household: Household;
   /** Show the household budget page in preview and exports. */
@@ -125,6 +129,7 @@ export function newClientState(prev: AppState, clientName = ''): AppState {
   const fresh = defaultState();
   return {
     ...fresh,
+    pristine: true,
     advisor: defaultAdvisor() ?? prev.advisor,
     output: { ...prev.output, hidden: [], journey: { ...prev.output.journey, target: 'auto' } },
     // the team's values carry over to the next client
@@ -138,6 +143,25 @@ export function newClientState(prev: AppState, clientName = ''): AppState {
 }
 
 const KEY = 'portfolio-builder.state.v1';
+/** Client open in this browser tab, so that every tab keeps its own client on reload. */
+const TAB_KEY = 'portfolio-builder.tab-client';
+
+/** Identifies the content of a client; view settings (time slider, nominal/real) are left out. */
+export function contentKey(s: AppState): string {
+  const { yearIndex, real, updatedAt, pristine, ...content } = s;
+  void yearIndex, real, updatedAt, pristine;
+  return JSON.stringify(content);
+}
+
+/** Clients with a name or with anything entered are kept in the list. */
+export function keepClient(s: AppState): boolean {
+  return !!s.input.client.name.trim() || !s.pristine;
+}
+
+/** Saves the client in the browser's list if worth keeping; returns the time of its last real change. */
+export function storeClient(s: AppState): string | undefined {
+  return keepClient(s) ? saveClient(s.clientId, s.input.client.name, contentKey(s), s).savedAt : undefined;
+}
 
 type OldClient = Partial<Client> & { childrenBirthYears?: number[]; partner?: Omit<Adult, 'id'>; childBonusOwner?: string };
 
@@ -186,8 +210,33 @@ export function migrateState(raw: unknown): AppState | null {
   } as AppState;
 }
 
+/** The state as written to a portfolio file: stamped with the time of its last change. */
+export function stateForFile(s: AppState): AppState {
+  const { pristine, ...rest } = s;
+  void pristine;
+  return { ...rest, updatedAt: getClient(s.clientId)?.savedAt ?? new Date().toISOString() };
+}
+
+/**
+ * A portfolio file and this browser's copy of the same client: which one is newer?
+ * 'ask' when the file is from before files carried a time and the two differ.
+ */
+export function newerCopy(file: AppState): { pick: 'file' | 'browser' | 'ask'; browser?: AppState; browserAt?: string } {
+  const entry = getClient<AppState>(file.clientId);
+  const browser = entry && migrateState(entry.state);
+  if (!entry || !browser || entry.key === contentKey(file)) return { pick: 'file' };
+  const res = { browser: { ...browser, clientId: entry.id }, browserAt: entry.savedAt };
+  if (!file.updatedAt) return { pick: 'ask', ...res };
+  return { pick: file.updatedAt >= entry.savedAt ? 'file' : 'browser', ...res };
+}
+
 function load(): AppState {
   try {
+    // a reloaded tab reopens its own client, not the one last edited in another tab
+    const tabClient = sessionStorage.getItem(TAB_KEY);
+    const saved = tabClient ? getClient<AppState>(tabClient) : undefined;
+    const fromList = saved && migrateState(saved.state);
+    if (fromList) return { ...fromList, clientId: saved!.id };
     const raw = localStorage.getItem(KEY);
     if (raw) return migrateState(JSON.parse(raw)) ?? defaultState();
   } catch {
@@ -198,16 +247,31 @@ function load(): AppState {
 
 export function useAppState() {
   const [state, setState] = useState<AppState>(load);
+  /** Time of this tab's last save of the current client (to notice changes from other tabs). */
+  const lastSaved = useRef<string>();
   useEffect(() => {
     try {
       localStorage.setItem(KEY, JSON.stringify(state));
     } catch {
       /* storage unavailable */
     }
-    saveClient(state.clientId, state.input.client.name, state);
+    try {
+      sessionStorage.setItem(TAB_KEY, state.clientId);
+    } catch {
+      /* storage unavailable */
+    }
+    lastSaved.current = storeClient(state) ?? lastSaved.current;
   }, [state]);
 
-  const update = useCallback((patch: Partial<AppState>) => setState((s) => ({ ...s, ...patch })), []);
+  const update = useCallback(
+    (patch: Partial<AppState>) =>
+      setState((s) => {
+        // moving the time slider or switching nominal/real is not an entry worth keeping
+        const viewOnly = Object.keys(patch).every((k) => ['yearIndex', 'real', 'uiLang', 'reportLang'].includes(k));
+        return { ...s, ...patch, pristine: viewOnly ? s.pristine : false };
+      }),
+    [],
+  );
   const updateInput = useCallback(
     (patch: Partial<PortfolioInput>) =>
       setState((s) => {
@@ -215,9 +279,9 @@ export function useAppState() {
         // keep the selected year inside the horizon; follow the end when it was at the end
         const atEnd = s.yearIndex >= s.input.horizonYears;
         const yearIndex = atEnd ? input.horizonYears : Math.min(s.yearIndex, input.horizonYears);
-        return { ...s, input, yearIndex };
+        return { ...s, input, yearIndex, pristine: false };
       }),
     [],
   );
-  return { state, setState, update, updateInput };
+  return { state, setState, update, updateInput, lastSaved };
 }

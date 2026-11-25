@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { assignBirthDates, scanBirthDates } from '../documents/birthScan';
 import { autoImport } from '../documents/autoImport';
 import type { ClientDoc } from '../documents/readers';
@@ -6,7 +6,7 @@ import { downloadTemplate } from '../documents/template';
 import { missingBirthDate } from '../engine/person';
 import { filesToDocs, folderSupported, listFiles, pickFolder, writePortfolio, type ClientFolder } from '../folder/clientFolder';
 import { makeFormat, type T } from '../i18n';
-import { newClientState, type AppState } from '../state';
+import { contentKey, newClientState, type AppState } from '../state';
 import { Section } from './Settings';
 
 interface Props {
@@ -33,6 +33,25 @@ export function FolderSection({ t, state, folder, setFolder, setState, docs, set
   latest.current = { state, docs };
   const scanRun = useRef(0);
   const filesInput = useRef<HTMLInputElement>(null);
+  // the open folder belongs to one client; its portfolio.json follows every change automatically
+  const folderClient = useRef('');
+  const written = useRef('');
+  const [autoSaved, setAutoSaved] = useState('');
+  useEffect(() => {
+    if (!folder || state.clientId !== folderClient.current) return;
+    const key = contentKey(state);
+    if (key === written.current) return;
+    const id = window.setTimeout(async () => {
+      try {
+        await writePortfolio(folder, state);
+        written.current = key;
+        setAutoSaved(new Date().toTimeString().slice(0, 5));
+      } catch (e) {
+        fail(e);
+      }
+    }, 1500);
+    return () => window.clearTimeout(id);
+  }, [state, folder]); // eslint-disable-line react-hooks/exhaustive-deps
   const dirInput = useRef<HTMLInputElement>(null);
 
   const fail = (e: unknown) => {
@@ -71,6 +90,10 @@ export function FolderSection({ t, state, folder, setFolder, setState, docs, set
       const dir = await pickFolder();
       const list = await listFiles(dir);
       const res = await autoImport(list, newClientState(state, dir.name), t, { allowPortfolio: true });
+      folderClient.current = res.state.clientId;
+      // written once on opening: stamps older files with a time and writes a newer browser copy back
+      written.current = '';
+      setAutoSaved('');
       setState(res.state);
       setFolder(dir);
       setDocs(list);
@@ -105,6 +128,7 @@ export function FolderSection({ t, state, folder, setFolder, setState, docs, set
     setError('');
     try {
       await writePortfolio(folder, state);
+      written.current = contentKey(state);
       setMsgs([t('folderSaved', { name: `${folder.name}/portfolio.json` })]);
       setDocs(await listFiles(folder));
     } catch (e) {
@@ -141,7 +165,12 @@ export function FolderSection({ t, state, folder, setFolder, setState, docs, set
       ) : (
         <div className="hint">{t(mobileDevice ? 'folderMobileHint' : 'folderNotSupported')}</div>
       )}
-      {folder && <div className="folder-name">📂 {folder.name}</div>}
+      {folder && (
+        <div className="folder-name">
+          📂 {folder.name}
+          {autoSaved && <span className="hint"> · {t('folderAutoSaved', { time: autoSaved })}</span>}
+        </div>
+      )}
 
       <div
         className={`dropzone ${drag ? 'over' : ''}`}

@@ -2,7 +2,7 @@
 // Works with OneDrive-synced folders: files stay on the machine, nothing is uploaded.
 
 import { kindOf, type ClientDoc } from '../documents/readers';
-import { migrateState, type AppState } from '../state';
+import { migrateState, stateForFile, type AppState } from '../state';
 
 export const PORTFOLIO_FILE = 'portfolio.json';
 
@@ -73,7 +73,7 @@ export async function writeFile(dir: ClientFolder, name: string, data: Blob | st
 }
 
 export function writePortfolio(dir: ClientFolder, state: AppState) {
-  return writeFile(dir, PORTFOLIO_FILE, JSON.stringify(state, null, 2));
+  return writeFile(dir, PORTFOLIO_FILE, JSON.stringify(stateForFile(state), null, 2));
 }
 
 /** Fallback when no folder is open: regular browser download. */

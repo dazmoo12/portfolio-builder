@@ -1,18 +1,22 @@
-// Saved clients in this browser: every client with a name is kept here automatically, so
-// "+ New client" never loses work. Files and client folders remain the way to share a client.
+// Saved clients in this browser: every client with content is kept here automatically, so
+// switching clients or starting a new one never loses work. Files and client folders remain
+// the way to share a client or move it to another device.
 
 export interface SavedClient<S> {
   id: string;
   name: string;
+  /** Last real change (ISO). Opening or re-saving an unchanged client does not move it. */
   savedAt: string;
+  /** Fingerprint of the content, to tell real changes from re-saves. */
+  key: string;
   state: S;
 }
 
-const KEY = 'portfolio-builder.clients.v1';
+export const CLIENTS_KEY = 'portfolio-builder.clients.v1';
 
 function readAll<S>(): Record<string, SavedClient<S>> {
   try {
-    return JSON.parse(localStorage.getItem(KEY) ?? '{}') ?? {};
+    return JSON.parse(localStorage.getItem(CLIENTS_KEY) ?? '{}') ?? {};
   } catch {
     return {};
   }
@@ -20,7 +24,7 @@ function readAll<S>(): Record<string, SavedClient<S>> {
 
 function writeAll<S>(all: Record<string, SavedClient<S>>) {
   try {
-    localStorage.setItem(KEY, JSON.stringify(all));
+    localStorage.setItem(CLIENTS_KEY, JSON.stringify(all));
   } catch {
     /* storage full or unavailable */
   }
@@ -28,18 +32,30 @@ function writeAll<S>(all: Record<string, SavedClient<S>>) {
 
 export const newClientId = () => `k${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 
-/** Newest first. */
+/** Newest change first. */
 export function listClients<S>(): SavedClient<S>[] {
   return Object.values(readAll<S>()).sort((a, b) => b.savedAt.localeCompare(a.savedAt));
 }
 
-/** Stores the client; clients without a name are not kept. Returns true if saved. */
-export function saveClient<S>(id: string, name: string, state: S): boolean {
-  if (!name.trim()) return false;
+export function getClient<S>(id: string): SavedClient<S> | undefined {
+  return readAll<S>()[id];
+}
+
+/**
+ * Stores the client if its content changed. `key` identifies the content (without view
+ * settings such as the time slider). Returns the entry as stored.
+ */
+export function saveClient<S>(id: string, name: string, key: string, state: S, now = new Date().toISOString()): SavedClient<S> {
   const all = readAll<S>();
-  all[id] = { id, name: name.trim(), savedAt: new Date().toISOString(), state };
+  const prev = all[id];
+  if (prev && prev.key === key && prev.name === name.trim()) {
+    // same content: keep the time of the last real change, but store view settings
+    all[id] = { ...prev, state };
+  } else {
+    all[id] = { id, name: name.trim(), savedAt: now, key, state };
+  }
   writeAll(all);
-  return true;
+  return all[id];
 }
 
 export function deleteClient(id: string) {

@@ -18,7 +18,7 @@ export function ClientsSection({ t, fmt, state, onOpen }: Props) {
   const [query, setQuery] = useState('');
   const all = listClients<AppState>();
   const q = query.trim().toLowerCase();
-  const shown = q ? all.filter((c) => c.name.toLowerCase().includes(q)) : all;
+  const shown = q ? all.filter((c) => (c.name || t('unnamedClient')).toLowerCase().includes(q)) : all;
   return (
     <Section title={`${t('secClients')}${all.length ? ` (${all.length})` : ''}`} defaultOpen={false}>
       <p className="hint">{t('clientsHint')}</p>
@@ -30,7 +30,7 @@ export function ClientsSection({ t, fmt, state, onOpen }: Props) {
           return (
             <li key={c.id} className={current ? 'current' : ''}>
               <div>
-                <b>{c.name}</b>
+                <b>{c.name || t('unnamedClient')}</b>
                 <span>
                   {fmt.date(c.savedAt.slice(0, 10))} {c.savedAt.slice(11, 16)}
                   {current && ` · ${t('currentClient')}`}
@@ -53,7 +53,7 @@ export function ClientsSection({ t, fmt, state, onOpen }: Props) {
                 title={t('deleteClient')}
                 disabled={current}
                 onClick={() => {
-                  if (!window.confirm(t('confirmDeleteClient', { name: c.name }))) return;
+                  if (!window.confirm(t('confirmDeleteClient', { name: c.name || t('unnamedClient') }))) return;
                   deleteClient(c.id);
                   refresh((n) => n + 1);
                 }}

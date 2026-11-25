@@ -7,7 +7,7 @@ Languages: DE / EN / PT. The language switch changes interface and document toge
 **Household budget:** monthly net income and expenses, shown as the first page of the preview, PDF and PowerPoint. It includes the free amount, the proposed savings and the remaining reserve; the page can be switched off per client.
 
 **Client folders:** "Open client folder" (Edge/Chrome) opens a local or OneDrive-synced folder.
-- The portfolio is stored as `portfolio.json` in that folder and loads automatically next time.
+- The portfolio is stored as `portfolio.json` in that folder after every change and loads automatically next time; if the browser holds a newer copy of the client, that one is used.
 - PowerPoint exports are saved straight into the folder.
 - A folder without `portfolio.json` starts a clean client, named after the folder; nothing is carried over from the previous client.
 
@@ -35,7 +35,7 @@ Languages: DE / EN / PT. The language switch changes interface and document toge
 
 **Government subsidy split:** the subsidy is shown as adults (base allowance incl. starter bonus) and children (child bonus), with one line per adult, in preview, PDF and PowerPoint.
 
-**Saved clients:** every client with a name is saved automatically in the browser and listed under "Gespeicherte Kunden" (open, delete). "+ New client" keeps the previous client there.
+**Saved clients:** every client is saved automatically in the browser as soon as anything is entered (with or without a name). Switch clients with the selector in the top bar or under "Gespeicherte Kunden"; nothing is lost on a switch. Each browser tab keeps its own client, and a notice appears if the same client is changed in another tab. With an open client folder, `portfolio.json` is written automatically after each change. Portfolio files carry the time of their last change, so an older file never overwrites newer work in the browser.
 
 **Advisor profiles:** save contact details once and pick a default. "+ New client" starts the next client with that advisor and the same output settings.
 

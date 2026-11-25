@@ -11,7 +11,8 @@ import { exportPptx, pptxFileName } from './export/pptx';
 import type { ClientDoc } from './documents/readers';
 import { download, writeFile, type ClientFolder } from './folder/clientFolder';
 import { languages, makeFormat, makeT } from './i18n';
-import { migrateState, newClientState, useAppState, type AppState } from './state';
+import { CLIENTS_KEY, getClient, listClients, type SavedClient } from './clients';
+import { contentKey, migrateState, newClientState, stateForFile, useAppState, type AppState } from './state';
 import { builtInThemes, loadCustomThemes, saveCustomThemes, type Theme } from './templates/themes';
 import { AdvisorSection } from './ui/AdvisorSection';
 import { ClientsSection } from './ui/ClientsSection';
@@ -38,7 +39,24 @@ const M_PAGE_LABEL = {
 } as const;
 
 export default function App() {
-  const { state, setState, update, updateInput } = useAppState();
+  const { state, setState, update, updateInput, lastSaved } = useAppState();
+  // saved clients, refreshed when another tab saves; this tab's own saves re-render anyway
+  const [, setClientsVersion] = useState(0);
+  const [otherTab, setOtherTab] = useState<SavedClient<AppState> | null>(null);
+  const saved = listClients<AppState>();
+  const current = useRef(state);
+  current.current = state;
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== CLIENTS_KEY) return;
+      setClientsVersion((v) => v + 1);
+      // the same client was changed in another tab
+      const entry = getClient<AppState>(current.current.clientId);
+      if (entry && entry.savedAt !== lastSaved.current && entry.key !== contentKey(current.current)) setOtherTab(entry);
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [lastSaved]);
   const [customThemes, setCustomThemes] = useState<Theme[]>(loadCustomThemes);
   const [printing, setPrinting] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -89,7 +107,13 @@ export default function App() {
     setDocs([]);
     setStageTab('preview');
     setMPage('client');
+    setOtherTab(null);
     setState(next);
+  };
+  const openSaved = (id: string) => {
+    const entry = getClient<AppState>(id);
+    const s = entry && migrateState(entry.state);
+    if (s) switchClient({ ...s, clientId: id });
   };
   const fileSafeName = vm.clientName.replace(/[^\p{L}\p{N}-]+/gu, '_');
 
@@ -125,7 +149,7 @@ export default function App() {
 
   const savePortfolio = () => {
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }));
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(stateForFile(state), null, 2)], { type: 'application/json' }));
     a.download = `Portfolio_${fileSafeName}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
@@ -148,16 +172,25 @@ export default function App() {
         <header className="topbar">
           <div className="brand">
             <span className="brand-mark" />
-            {t('appTitle')}
+            <span className="brand-name">{t('appTitle')}</span>
           </div>
+          <select
+            className="client-switch"
+            aria-label={t('switchClient')}
+            title={t('switchClient')}
+            value={state.clientId}
+            onChange={(e) => openSaved(e.target.value)}
+          >
+            {!saved.some((c) => c.id === state.clientId) && <option value={state.clientId}>{state.input.client.name.trim() || t('newClientOption')}</option>}
+            {saved.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name || t('unnamedClient')}
+              </option>
+            ))}
+          </select>
           <button
             className="btn topbar-btn"
-            onClick={() => {
-              const c = state.input.client;
-              const unsavedWork = c.birthDate || c.children.length || c.adults.length || state.household.income.length || state.household.expenses.length;
-              if (!c.name.trim() && unsavedWork && !window.confirm(t('confirmNewUnnamed'))) return;
-              switchClient(newClientState(state));
-            }}
+            onClick={() => switchClient(newClientState(state))}
           >
             {t('newClient')}
           </button>
@@ -304,6 +337,25 @@ export default function App() {
             <DocumentsView t={t} fmt={fmt} docs={docs} state={state} setState={setState} />
           )}
         </main>
+
+        {otherTab && (
+          <div className="tab-toast" role="alert">
+            <span>{t('otherTabChanged', { time: new Date(otherTab.savedAt).toTimeString().slice(0, 5) })}</span>
+            <button
+              className="btn primary"
+              onClick={() => {
+                const s = migrateState(otherTab.state);
+                if (s) setState({ ...s, clientId: otherTab.id });
+                setOtherTab(null);
+              }}
+            >
+              {t('otherTabTake')}
+            </button>
+            <button className="btn ghost" onClick={() => setOtherTab(null)}>
+              {t('otherTabKeep')}
+            </button>
+          </div>
+        )}
 
         <div className="m-pager">
           <button className="btn" disabled={pageIdx === 0} onClick={() => goPage(M_PAGES[pageIdx - 1])}>

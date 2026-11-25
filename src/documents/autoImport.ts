@@ -3,7 +3,8 @@
 
 import { PORTFOLIO_FILE } from '../folder/clientFolder';
 import type { T } from '../i18n';
-import { migrateState, type AppState } from '../state';
+import { migrateState, newerCopy, type AppState } from '../state';
+import { makeFormat } from '../i18n';
 import { applyTemplate } from './apply';
 import { readDoc, type ClientDoc } from './readers';
 import { isTemplate, parseTemplate } from './template';
@@ -17,8 +18,17 @@ export async function autoImport(docs: ClientDoc[], state: AppState, t: T, opts:
     if (pf) {
       const loaded = migrateState(JSON.parse(await (await pf.getFile()).text()));
       if (loaded) {
-        next = loaded;
-        messages.push(t('folderLoaded', { name: pf.path }));
+        // never let an older file overwrite newer work kept in this browser
+        const c = newerCopy(loaded);
+        const when = c.browserAt ? `${makeFormat(state.uiLang).date(c.browserAt.slice(0, 10))} ${new Date(c.browserAt).toTimeString().slice(0, 5)}` : '';
+        const useBrowser = c.pick === 'browser' || (c.pick === 'ask' && window.confirm(t('folderAskNewer', { name: pf.path, time: when })));
+        if (useBrowser && c.browser) {
+          next = c.browser;
+          messages.push(t('folderBrowserNewer', { name: pf.path, time: when }));
+        } else {
+          next = loaded;
+          messages.push(t('folderLoaded', { name: pf.path }));
+        }
       }
     }
   }

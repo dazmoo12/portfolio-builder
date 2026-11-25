@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { deleteClient, listClients, saveClient } from './clients';
-import { defaultState, migrateState, newClientState } from './state';
+import { deleteClient, getClient, listClients, saveClient } from './clients';
+import { contentKey, defaultState, keepClient, migrateState, newClientState, newerCopy, storeClient } from './state';
 
 describe('saved portfolios from older versions', () => {
   const old = () => {
@@ -34,24 +34,78 @@ describe('saved portfolios from older versions', () => {
 });
 
 describe('saved clients', () => {
+  const named = (name: string) => {
+    const d = defaultState();
+    return { ...d, input: { ...d.input, client: { ...d.input.client, name } } };
+  };
+
   it('keeps the previous client when a new one starts', () => {
     localStorage.clear();
-    const a = { ...defaultState(), input: { ...defaultState().input, client: { ...defaultState().input.client, name: 'Kunde A' } } };
-    saveClient(a.clientId, a.input.client.name, a);
+    const a = named('Kunde A');
+    storeClient(a);
     const b = newClientState(a);
     expect(b.clientId).not.toBe(a.clientId);
-    expect(saveClient(b.clientId, b.input.client.name, b)).toBe(false); // no name yet: not kept
+    expect(keepClient(b)).toBe(false); // nothing entered yet
+    expect(storeClient(b)).toBeUndefined();
     expect(listClients().map((c) => c.name)).toEqual(['Kunde A']);
     deleteClient(a.clientId);
     expect(listClients()).toEqual([]);
   });
 
+  it('keeps a client without a name once something is entered', () => {
+    localStorage.clear();
+    const b = { ...newClientState(defaultState()), pristine: false };
+    expect(storeClient(b)).toBeDefined();
+    expect(listClients()).toHaveLength(1);
+  });
+
+  it('moves the time of the last change only when the content changes', () => {
+    localStorage.clear();
+    const a = named('Kunde A');
+    saveClient(a.clientId, 'Kunde A', contentKey(a), a, '2026-01-01T10:00:00Z');
+    saveClient(a.clientId, 'Kunde A', contentKey({ ...a, yearIndex: 3 }), { ...a, yearIndex: 3 }, '2026-01-02T10:00:00Z');
+    expect(getClient(a.clientId)!.savedAt).toBe('2026-01-01T10:00:00Z');
+    const changed = { ...a, input: { ...a.input, totalMonthly: 500 } };
+    saveClient(a.clientId, 'Kunde A', contentKey(changed), changed, '2026-01-03T10:00:00Z');
+    expect(getClient(a.clientId)!.savedAt).toBe('2026-01-03T10:00:00Z');
+  });
+
   it('gives old files without an id the id of the saved client with the same name', () => {
     localStorage.clear();
     const a = defaultState();
-    saveClient('k-old', a.input.client.name, a);
+    saveClient('k-old', a.input.client.name, contentKey(a), a);
     const { clientId, ...noId } = a;
     expect(migrateState(noId)!.clientId).toBe('k-old');
     void clientId;
+  });
+});
+
+describe('portfolio file against the browser copy', () => {
+  const base = () => {
+    localStorage.clear();
+    const d = defaultState();
+    const browser = { ...d, input: { ...d.input, totalMonthly: 500 } };
+    saveClient(d.clientId, d.input.client.name, contentKey(browser), browser, '2026-11-20T10:00:00Z');
+    return d;
+  };
+
+  it('keeps the newer browser copy over an older file', () => {
+    const file = { ...base(), updatedAt: '2026-11-19T10:00:00Z' };
+    const c = newerCopy(file);
+    expect(c.pick).toBe('browser');
+    expect(c.browser!.input.totalMonthly).toBe(500);
+  });
+
+  it('uses a newer file', () => {
+    expect(newerCopy({ ...base(), updatedAt: '2026-11-21T10:00:00Z' }).pick).toBe('file');
+  });
+
+  it('asks for files without a time that differ from the browser copy', () => {
+    expect(newerCopy(base()).pick).toBe('ask');
+  });
+
+  it('uses the file when both are the same or the browser does not know the client', () => {
+    localStorage.clear();
+    expect(newerCopy(defaultState()).pick).toBe('file');
   });
 });

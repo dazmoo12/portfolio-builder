@@ -36,6 +36,18 @@ button, input, select { font: inherit; color: inherit; }
 .lang { display: flex; gap: 8px; align-items: center; font-size: 13px; }
 .lang select { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.3); color: #fff; border-radius: 6px; padding: 4px 8px; }
 .lang option { color: #000; }
+.client-switch {
+  margin-left: 20px; max-width: 260px; min-width: 0; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.3);
+  color: #fff; border-radius: 6px; padding: 5px 8px; font-size: 13px;
+}
+.client-switch option { color: #000; }
+.tab-toast {
+  position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 40;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px; max-width: calc(100vw - 24px);
+  background: var(--ui-panel); border: 1px solid var(--ui-line); border-left: 4px solid #c9a227;
+  border-radius: 8px; padding: 10px 14px; box-shadow: 0 6px 24px rgba(0,0,0,.15); font-size: 13px;
+}
+@media (max-width: 960px) { .tab-toast { bottom: 76px; } }
 @media (min-width: 601px) and (max-width: 960px) {
   .kpis { grid-template-columns: repeat(3, 1fr) !important; }
   .kpis .kpi.hero { grid-column: 1 / -1; }
@@ -45,6 +57,8 @@ button, input, select { font: inherit; color: inherit; }
   .brand { font-size: 14px; gap: 6px; white-space: nowrap; }
   .btn.topbar-btn { margin-right: 0; padding: 5px 8px; font-size: 12px; white-space: nowrap; }
   .lang span { display: none; }
+  .brand-name { display: none; }
+  .client-switch { margin-left: 4px; flex: 1; max-width: none; }
 }
 
 .sidebar { overflow-y: auto; background: var(--ui-panel); border-right: 1px solid var(--ui-line); }
