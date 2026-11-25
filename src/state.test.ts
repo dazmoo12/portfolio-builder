@@ -1,5 +1,7 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { defaultState, migrateState } from './state';
+import { deleteClient, listClients, saveClient } from './clients';
+import { defaultState, migrateState, newClientState } from './state';
 
 describe('saved portfolios from older versions', () => {
   const old = () => {
@@ -28,5 +30,28 @@ describe('saved portfolios from older versions', () => {
   it('leaves current portfolios unchanged', () => {
     const s = defaultState();
     expect(migrateState(JSON.parse(JSON.stringify(s)))!.input).toEqual(s.input);
+  });
+});
+
+describe('saved clients', () => {
+  it('keeps the previous client when a new one starts', () => {
+    localStorage.clear();
+    const a = { ...defaultState(), input: { ...defaultState().input, client: { ...defaultState().input.client, name: 'Kunde A' } } };
+    saveClient(a.clientId, a.input.client.name, a);
+    const b = newClientState(a);
+    expect(b.clientId).not.toBe(a.clientId);
+    expect(saveClient(b.clientId, b.input.client.name, b)).toBe(false); // no name yet: not kept
+    expect(listClients().map((c) => c.name)).toEqual(['Kunde A']);
+    deleteClient(a.clientId);
+    expect(listClients()).toEqual([]);
+  });
+
+  it('gives old files without an id the id of the saved client with the same name', () => {
+    localStorage.clear();
+    const a = defaultState();
+    saveClient('k-old', a.input.client.name, a);
+    const { clientId, ...noId } = a;
+    expect(migrateState(noId)!.clientId).toBe('k-old');
+    void clientId;
   });
 });

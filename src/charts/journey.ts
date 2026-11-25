@@ -33,7 +33,7 @@ export function buildJourney(
   const avds = shown.filter((p) => p.product.kind === 'avd');
   const target = s.target === JOURNEY_PORTFOLIO ? undefined : avds.find((p) => p.position.uid === s.target) ?? avds[0];
   const deflate = (v: number, i: number) => (real ? toReal(v, i, input.inflation) : v);
-  const settings = { lumpSum: s.lumpSum, payoutReturn: s.payoutReturn, endAge: s.endAge };
+  const settings = { lumpSum: s.lumpSum, payoutReturn: s.payoutReturn, endAge: s.endAge, payoutAge: s.payoutAge };
 
   if (target) {
     const owner = adultOwner(input.client, target.position.owner) ?? input.client;
@@ -49,9 +49,9 @@ export function buildJourney(
     shown.reduce(
       (acc, p) => {
         const x = p.series[i];
-        return { ...acc, value: acc.value + x.value, netValue: acc.netValue + x.netValue, paidIn: acc.paidIn + x.paidIn, subsidy: acc.subsidy + x.subsidy, fees: acc.fees + x.fees };
+        return { ...acc, value: acc.value + x.value, netValue: acc.netValue + x.netValue, paidIn: acc.paidIn + x.paidIn, subsidy: acc.subsidy + x.subsidy, childSubsidy: acc.childSubsidy + x.childSubsidy, fees: acc.fees + x.fees };
       },
-      { year: shown[0].series[i].year, value: 0, netValue: 0, paidIn: 0, subsidy: 0, fees: 0 },
+      { year: shown[0].series[i].year, value: 0, netValue: 0, paidIn: 0, subsidy: 0, childSubsidy: 0, fees: 0 },
     ),
   );
   const j = computeJourney(total, ageAtStart(input.client, input.startYear), input.horizonYears, settings, deflate);
@@ -60,7 +60,7 @@ export function buildJourney(
 
 export const JOURNEY_COLORS = { own: '#9DB8D9' };
 
-export function journeyOption(vm: ViewModel, j: JourneyView, o: { animation?: boolean; compact?: boolean } = {}): EChartsOption {
+export function journeyOption(vm: ViewModel, j: JourneyView, o: { animation?: boolean; compact?: boolean; narrow?: boolean } = {}): EChartsOption {
   const { t, fmt } = vm;
   const c = vm.theme.colors;
   const fs = o.compact ? 9 : 11;
@@ -94,13 +94,13 @@ export function journeyOption(vm: ViewModel, j: JourneyView, o: { animation?: bo
     animation: o.animation ?? true,
     textStyle: { fontFamily: vm.theme.fonts.body, color: c.text },
     grid: { left: 8, right: 24, top: o.compact ? 44 : 52, bottom: o.compact ? 44 : 52, containLabel: true },
-    legend: { bottom: 0, icon: 'roundRect', itemWidth: 10, itemHeight: 10, textStyle: { color: c.text, fontSize: fs } },
+    legend: { type: o.narrow ? 'scroll' : 'plain', bottom: 0, icon: 'roundRect', itemWidth: 10, itemHeight: 10, textStyle: { color: c.text, fontSize: fs } },
     tooltip: { trigger: 'axis', valueFormatter: (v) => (v == null ? '–' : fmt.eur(Number(v))) },
     xAxis: {
       type: 'category',
       data: ages,
       boundaryGap: false,
-      axisLabel: { color: c.muted, fontSize: fs, interval: (i: number) => (j.ages[i] - j.ages[0]) % 5 === 0 || i === payoutIdx },
+      axisLabel: { color: c.muted, fontSize: fs, interval: (i: number) => (j.ages[i] % 5 === 0 && Math.abs(i - payoutIdx) > 1) || i === payoutIdx },
       axisTick: { show: false },
       axisLine: { lineStyle: { color: '#D5DAE1' } },
     },
@@ -118,11 +118,11 @@ export function journeyOption(vm: ViewModel, j: JourneyView, o: { animation?: bo
           label: { color: c.muted, fontSize: fs, fontWeight: 600, position: 'insideTop', distance: o.compact ? -30 : -36 },
           data: [
             [
-              { name: `${t('savingPhase').toUpperCase()} · ${t('avgPa', { rate: fmt.pct(j.savingReturn) })}`, xAxis: ages[0] },
+              { name: o.narrow ? t('savingPhase').toUpperCase() : `${t('savingPhase').toUpperCase()} · ${t('avgPa', { rate: fmt.pct(j.savingReturn) })}`, xAxis: ages[0] },
               { xAxis: ages[payoutIdx] },
             ],
             [
-              { name: `${t('payoutPhase').toUpperCase()} · ${fmt.pct(j.payoutReturn)} p. a.`, xAxis: ages[payoutIdx] },
+              { name: o.narrow ? t('payoutPhase').toUpperCase() : `${t('payoutPhase').toUpperCase()} · ${fmt.pct(j.payoutReturn)} p. a.`, xAxis: ages[payoutIdx] },
               { xAxis: ages[ages.length - 1] },
             ],
           ],
@@ -165,18 +165,19 @@ export function journeyOption(vm: ViewModel, j: JourneyView, o: { animation?: bo
           symbolSize: 7,
           itemStyle: { color: c.background, borderColor: c.primary, borderWidth: 2 },
           data: [
-            ...(j.lumpSum > 0
+            // on a phone the labels would overlap; the figures below the chart show the amounts
+            ...(j.lumpSum > 0 && !o.narrow
               ? [
                   {
                     name: 'lump',
                     coord: [ages[payoutIdx], j.capital[payoutIdx]!],
-                    label: { ...label(`${t('kpiLump')} ${fmt.eur(j.lumpSum)}`), position: 'right' as const, distance: 10 },
+                    label: { ...label(`${t('kpiLump')} ${fmt.eur(j.lumpSum)}`), position: 'bottom' as const, distance: 12 },
                   },
                 ]
               : []),
             // the first amount is in the figures below; label every second recalculation after it
             ...j.steps
-              .filter((_, k) => k % 2 === 1)
+              .filter((_, k) => k % 2 === 1 && !o.narrow)
               .map((s) => {
                 const i = j.ages.indexOf(s.age);
                 return {

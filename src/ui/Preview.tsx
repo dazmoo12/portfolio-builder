@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chart } from '../charts/Chart';
 import type { HouseholdView } from '../charts/household';
-import type { ViewModel } from '../charts/model';
+import { useNarrow } from './useNarrow';
+import { subsidyShortText, subsidySplitText, type ViewModel } from '../charts/model';
 import type { Lang } from '../engine/types';
 import { allocationOption, compositionOption, developmentOption, scenarioOption } from '../charts/options';
 import { catalog } from '../catalog';
@@ -44,10 +45,11 @@ export function Preview({ vm, ui, uiLang, warnings, household, onYear, onToggleP
     return () => window.clearInterval(timer.current);
   }, [playing, vm.input.horizonYears, onYear]);
 
-  const dev = useMemo(() => developmentOption(vm), [vm]);
-  const alloc = useMemo(() => allocationOption(vm), [vm]);
-  const comp = useMemo(() => compositionOption(vm), [vm]);
-  const scen = useMemo(() => scenarioOption(vm), [vm]);
+  const narrow = useNarrow();
+  const dev = useMemo(() => developmentOption(vm, { narrow }), [vm, narrow]);
+  const alloc = useMemo(() => allocationOption(vm, { narrow }), [vm, narrow]);
+  const comp = useMemo(() => compositionOption(vm, { narrow }), [vm, narrow]);
+  const scen = useMemo(() => scenarioOption(vm, { narrow }), [vm, narrow]);
 
   const toggleByName = (name: string) => {
     const p = vm.allPositions.find((x) => x.name === name);
@@ -145,7 +147,7 @@ export function Preview({ vm, ui, uiLang, warnings, household, onYear, onToggleP
         <div className="kpi">
           <span>{t('kpiSubsidy')}</span>
           <strong>{fmt.eur(k.subsidy)}</strong>
-          <em>{share(k.subsidy)}</em>
+          <em>{subsidyShortText(vm) || share(k.subsidy)}</em>
         </div>
         <div className="kpi">
           <span>{t('kpiGains')}</span>
@@ -153,6 +155,11 @@ export function Preview({ vm, ui, uiLang, warnings, household, onYear, onToggleP
           <em>{share(k.gains)}</em>
         </div>
       </div>
+      {subsidySplitText(vm) && (
+        <p className="subsidy-split">
+          <b>{t('subsidySplit')}:</b> {subsidySplitText(vm)} <span>({t('subsidyBaseNote')})</span>
+        </p>
+      )}
 
       {charts.development && (
         <div className="card">
@@ -196,6 +203,7 @@ export function Preview({ vm, ui, uiLang, warnings, household, onYear, onToggleP
           {charts.composition ? t('chartComposition') : t('reportPositions')} {vm.year}
         </h2>
         {charts.composition && <Chart option={comp} height={Math.max(160, 56 + vm.positions.length * 40)} />}
+        <div className="table-scroll">
         <table className="data">
           <thead>
             <tr>
@@ -236,6 +244,7 @@ export function Preview({ vm, ui, uiLang, warnings, household, onYear, onToggleP
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       <p className="disclaimer">

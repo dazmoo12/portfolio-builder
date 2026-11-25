@@ -2,6 +2,37 @@
 
 All changes to the Portfolio Builder, newest first. Live site: https://personal-investment-plan.netlify.app (deploys automatically from `main`).
 
+## 2026-11-25 – Saved clients, subsidy split, grown-up children, payout from 65
+
+**Saved clients**
+- Every client with a name is saved automatically in the browser. "+ New client" no longer loses the previous client.
+- New left-panel section "Gespeicherte Kunden": open or delete earlier clients (newest first, search from 7 clients on).
+- Starting a new client while the current one has data but no name asks for confirmation first, because unnamed clients are not saved.
+- Saved only in that advisor's browser; "Save portfolio" and client folders remain the way to share a client.
+
+**Government subsidy split between adults and children**
+- The subsidy figure shows adults (base allowance incl. starter bonus) and children (child bonus) separately.
+- A line "Förderung je Person" lists each adult's base allowance and child bonus.
+- Shown in the preview, the PDF and the PowerPoint.
+
+**Grown-up children**
+- A further adult can be marked as "Kind von" (child of) the client or another adult.
+- Until the grown-up child turns 25, that parent's AVD gets the child bonus, while the grown-up child keeps its own AVD with base allowance and starter bonus.
+
+**Money journey: payout from 65**
+- New setting "Auszahlung ab Alter" (65 to 70, default 65).
+- Payouts start at that age even if the contract runs longer; contributions after it are left out, and a note under the chart says so.
+- Previously the payout started at the end of the contract, e.g. at 67.
+- Age labels on the chart are now multiples of 5, plus the payout age.
+
+**Phones and tablets**
+- On screens up to tablet portrait width, the tool works as six pages to go through: Kunde → Haushalt → Portfolio → Ergebnis → Einstellungen → Export.
+- The pages are listed at the top, with Back and Next at the bottom. Laptops keep the side-by-side layout.
+- Phone charts get a one-line, swipeable legend and fewer labels, so nothing overlaps; the product table can be swiped sideways.
+- Tablets show the three key figures side by side.
+- Phones and tablets cannot open a client folder, because their browsers don't allow websites to read and write folders.
+- There, documents (including a saved `portfolio.json`) are picked one by one with "Dateien hochladen", also straight from the OneDrive app. A hint in the tool explains this, and the "Ordner hochladen" button is hidden.
+
 ## 2026-11-18 – Money journey and children per parent
 
 **Money journey (Geldreise)**

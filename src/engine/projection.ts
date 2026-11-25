@@ -6,11 +6,12 @@
 //  - regular contributions and subsidies of a year are added at the end of that year
 //  - no taxes (shown as gross values, see disclaimer)
 
-import { AVD_RULES, annualSubsidy, starterBonusApplies } from './avd';
-import { adultOwner, ageAtContractStart, childBirthYear } from './person';
+import { AVD_RULES, baseSubsidy, childBonus, eligibleChildren, starterBonusApplies } from './avd';
+import { adultBirthYear, adultOwner, ageAtContractStart, childBirthYear } from './person';
 import {
   SCENARIOS,
   type PortfolioInput,
+  type Adult,
   type Child,
   type Client,
   type Owner,
@@ -55,12 +56,25 @@ export function childBonusOwner(client: Client, child: Child): Owner {
   return adultOwner(client, child.bonusOwner)?.id ?? 'primary';
 }
 
-/** Each child counts only for the AVD of the parent receiving its child bonus. */
-function childYearsFor(client: Client, owner: Owner): number[] {
-  return client.children
+/** Parent of a grown-up child listed as an adult; undefined if not marked or the parent was removed. */
+export function grownUpChildParent(client: Client, a: Adult): Owner | undefined {
+  if (!a.childOf || a.childOf === a.id) return undefined;
+  return a.childOf === 'primary' ? 'primary' : adultOwner(client, a.childOf)?.id;
+}
+
+/**
+ * Each child counts only for the AVD of the parent receiving its child bonus. A grown-up child
+ * listed as a further adult counts too when it is marked as that parent's child.
+ */
+export function childYearsFor(client: Client, owner: Owner, startYear: number): number[] {
+  const children = client.children
     .filter((c) => childBonusOwner(client, c) === owner)
     .map(childBirthYear)
     .filter((y): y is number => y !== undefined);
+  const grownUp = client.adults
+    .filter((a) => grownUpChildParent(client, a) === owner)
+    .map((a) => adultBirthYear(a, startYear));
+  return [...children, ...grownUp];
 }
 
 export function clientDisplayName(client: Client): string {
@@ -96,6 +110,7 @@ export function projectPosition(
   let value = 0;
   let paidIn = 0;
   let subsidy = 0;
+  let childSubsidy = 0;
   let fees = 0;
 
   const point = (year: number): YearPoint => ({
@@ -104,6 +119,7 @@ export function projectPosition(
     netValue: value * (1 - exit),
     paidIn,
     subsidy,
+    childSubsidy,
     fees,
   });
 
@@ -138,8 +154,11 @@ export function projectPosition(
       value += annualOwn * (1 - entry);
 
       if (isAvd && annualOwn > 0) {
-        const s = annualSubsidy(annualOwn, childYearsFor(input.client, owner), calendarYear);
+        const children = eligibleChildren(childYearsFor(input.client, owner, input.startYear), calendarYear);
+        const child = children * childBonus(annualOwn);
+        const s = baseSubsidy(annualOwn) + child;
         subsidy += s;
+        childSubsidy += child;
         value += s;
       }
 
@@ -158,13 +177,14 @@ export function projectPosition(
 function sumSeries(positions: PositionProjection[], input: PortfolioInput): YearPoint[] {
   const out: YearPoint[] = [];
   for (let i = 0; i <= input.horizonYears; i++) {
-    const p: YearPoint = { year: input.startYear + i, value: 0, netValue: 0, paidIn: 0, subsidy: 0, fees: 0 };
+    const p: YearPoint = { year: input.startYear + i, value: 0, netValue: 0, paidIn: 0, subsidy: 0, childSubsidy: 0, fees: 0 };
     for (const pos of positions) {
       const s = pos.series[i];
       p.value += s.value;
       p.netValue += s.netValue;
       p.paidIn += s.paidIn;
       p.subsidy += s.subsidy;
+      p.childSubsidy += s.childSubsidy;
       p.fees += s.fees;
     }
     out.push(p);

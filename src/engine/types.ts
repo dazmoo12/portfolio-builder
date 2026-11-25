@@ -59,6 +59,8 @@ export interface Adult {
   name: string;
   age: number;
   birthDate?: string;
+  /** Grown-up child of the client or of another adult ('primary' or an adult's id): that parent's AVD gets the child bonus while it is under 25. */
+  childOf?: Owner;
 }
 
 export interface Child {
@@ -107,8 +109,10 @@ export interface YearPoint {
   netValue: number;
   /** Own contributions paid in so far (gross, before fees). */
   paidIn: number;
-  /** Government subsidies received so far (AVD). */
+  /** Government subsidies received so far (AVD), including the child bonus. */
   subsidy: number;
+  /** Part of subsidy that is child bonus (Kinderzulage); the rest is base subsidy and starter bonus. */
+  childSubsidy: number;
   /** Fees paid so far (entry, storage) – informational. */
   fees: number;
 }

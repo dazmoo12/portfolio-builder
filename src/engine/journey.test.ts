@@ -3,7 +3,7 @@ import { annualPayout, computeJourney } from './journey';
 import type { YearPoint } from './types';
 
 // saving: 1,000 € per year for 3 years, no growth
-const points: YearPoint[] = [0, 1, 2, 3].map((i) => ({ year: 2027 + i, value: i * 1000, netValue: i * 1000, paidIn: i * 1000, subsidy: 0, fees: 0 }));
+const points: YearPoint[] = [0, 1, 2, 3].map((i) => ({ year: 2027 + i, value: i * 1000, netValue: i * 1000, paidIn: i * 1000, subsidy: 0, childSubsidy: 0, fees: 0 }));
 const settings = { lumpSum: 0.3, payoutReturn: 0.04, endAge: 85 };
 
 describe('money journey', () => {
@@ -37,6 +37,19 @@ describe('money journey', () => {
     expect(j.payoutAge).toBe(65);
     expect(j.waitsForPayout).toBe(true);
     expect(j.capitalAtStart).toBe(3000); // unchanged while waiting
+  });
+
+  it('starts payouts at 65 even when the contract runs longer', () => {
+    const j = computeJourney(points, 63, 3, settings);
+    expect(j.payoutAge).toBe(65);
+    expect(j.cutAtPayout).toBe(true);
+    expect(j.contractEndAge).toBe(66);
+    expect(j.capitalAtStart).toBe(2000); // contributions after 65 are left out
+  });
+
+  it('uses a later planned payout age', () => {
+    expect(computeJourney(points, 50, 3, { ...settings, payoutAge: 67 }).payoutAge).toBe(67);
+    expect(computeJourney(points, 50, 3, { ...settings, payoutAge: 80 }).payoutAge).toBe(70);
   });
 
   it('flags payouts starting after 70', () => {

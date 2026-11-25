@@ -11,9 +11,10 @@ import { exportPptx, pptxFileName } from './export/pptx';
 import type { ClientDoc } from './documents/readers';
 import { download, writeFile, type ClientFolder } from './folder/clientFolder';
 import { languages, makeFormat, makeT } from './i18n';
-import { migrateState, newClientState, useAppState } from './state';
+import { migrateState, newClientState, useAppState, type AppState } from './state';
 import { builtInThemes, loadCustomThemes, saveCustomThemes, type Theme } from './templates/themes';
 import { AdvisorSection } from './ui/AdvisorSection';
+import { ClientsSection } from './ui/ClientsSection';
 import { DesignSection } from './ui/DesignSection';
 import { DocumentsView } from './ui/DocumentsView';
 import { JourneySection } from './ui/JourneySection';
@@ -24,6 +25,18 @@ import { Preview } from './ui/Preview';
 import { AssumptionsSection, CostsSection } from './ui/AssumptionsSection';
 import { AmountsSection, ClientSection, PositionsSection, PresetSection, Section } from './ui/Settings';
 
+/** Pages of the phone layout; on larger screens everything is shown side by side. */
+const M_PAGES = ['client', 'household', 'portfolio', 'preview', 'settings', 'export'] as const;
+type MPage = (typeof M_PAGES)[number];
+const M_PAGE_LABEL = {
+  client: 'mPageClient',
+  household: 'mPageHousehold',
+  portfolio: 'mPagePortfolio',
+  preview: 'mPagePreview',
+  settings: 'mPageSettings',
+  export: 'mPageExport',
+} as const;
+
 export default function App() {
   const { state, setState, update, updateInput } = useAppState();
   const [customThemes, setCustomThemes] = useState<Theme[]>(loadCustomThemes);
@@ -33,6 +46,12 @@ export default function App() {
   const [docs, setDocs] = useState<ClientDoc[]>([]);
   const [stageTab, setStageTab] = useState<'preview' | 'documents'>('preview');
   const loadInput = useRef<HTMLInputElement>(null);
+  const [mPage, setMPage] = useState<MPage>('client');
+  const pageIdx = M_PAGES.indexOf(mPage);
+  const goPage = (p: MPage) => {
+    setMPage(p);
+    window.scrollTo(0, 0);
+  };
 
   const themes = [...builtInThemes, ...customThemes];
   const theme = themes.find((th) => th.id === state.themeId) ?? builtInThemes[0];
@@ -64,6 +83,14 @@ export default function App() {
       const { hidden } = s.output;
       return { ...s, output: { ...s.output, hidden: hidden.includes(uid) ? hidden.filter((x) => x !== uid) : [...hidden, uid] } };
     });
+  // the current client is already saved (see useAppState); leave its folder and documents behind
+  const switchClient = (next: AppState) => {
+    setFolder(null);
+    setDocs([]);
+    setStageTab('preview');
+    setMPage('client');
+    setState(next);
+  };
   const fileSafeName = vm.clientName.replace(/[^\p{L}\p{N}-]+/gu, '_');
 
   const saveTheme = (th: Theme) => {
@@ -117,7 +144,7 @@ export default function App() {
 
   return (
     <>
-      <div className="app">
+      <div className="app" data-mpage={mPage}>
         <header className="topbar">
           <div className="brand">
             <span className="brand-mark" />
@@ -126,10 +153,10 @@ export default function App() {
           <button
             className="btn topbar-btn"
             onClick={() => {
-              setFolder(null);
-              setDocs([]);
-              setStageTab('preview');
-              setState(newClientState(state));
+              const c = state.input.client;
+              const unsavedWork = c.birthDate || c.children.length || c.adults.length || state.household.income.length || state.household.expenses.length;
+              if (!c.name.trim() && unsavedWork && !window.confirm(t('confirmNewUnnamed'))) return;
+              switchClient(newClientState(state));
             }}
           >
             {t('newClient')}
@@ -150,7 +177,17 @@ export default function App() {
           </label>
         </header>
 
+        {/* phones: the inputs and the result as pages to go through (hidden on larger screens) */}
+        <nav className="m-nav" aria-label={t('appTitle')}>
+          {M_PAGES.map((p, i) => (
+            <button key={p} className={mPage === p ? 'on' : ''} aria-current={mPage === p ? 'page' : undefined} onClick={() => goPage(p)}>
+              {i + 1}. {t(M_PAGE_LABEL[p])}
+            </button>
+          ))}
+        </nav>
+
         <aside className="sidebar">
+          <div className="m-group" data-page="client">
           <FolderSection
             t={t}
             state={state}
@@ -159,14 +196,24 @@ export default function App() {
             setState={setState}
             docs={docs}
             setDocs={setDocs}
-            onShowDocs={() => setStageTab('documents')}
+            onShowDocs={() => {
+              setStageTab('documents');
+              setMPage('preview');
+            }}
           />
+          <ClientsSection t={t} fmt={fmt} state={state} onOpen={switchClient} />
           <ClientSection {...props} />
           <AdvisorSection t={t} advisor={state.advisor} onChange={(advisor) => update({ advisor })} />
+          </div>
+          <div className="m-group" data-page="household">
           <HouseholdSection state={state} t={t} fmt={fmt} update={update} />
+          </div>
+          <div className="m-group" data-page="portfolio">
           <AmountsSection {...props} />
           <PresetSection {...props} />
           <PositionsSection {...props} />
+          </div>
+          <div className="m-group" data-page="settings">
           <AssumptionsSection {...props} products={products} />
           <CostsSection {...props} products={products} />
           <OutputSection t={t} output={state.output} onChange={(output) => update({ output })} />
@@ -177,6 +224,8 @@ export default function App() {
             onChange={(journey) => update({ output: { ...state.output, journey } })}
           />
           <DesignSection t={t} theme={theme} themes={themes} onSelect={(id) => update({ themeId: id })} onSave={saveTheme} onDelete={deleteTheme} />
+          </div>
+          <div className="m-group" data-page="export">
           <Section title={t('secExport')}>
             <label className="field">
               <span>{t('reportLanguage')}</span>
@@ -237,6 +286,7 @@ export default function App() {
               />
             </div>
           </Section>
+          </div>
         </aside>
 
         <main className="stage">
@@ -254,6 +304,18 @@ export default function App() {
             <DocumentsView t={t} fmt={fmt} docs={docs} state={state} setState={setState} />
           )}
         </main>
+
+        <div className="m-pager">
+          <button className="btn" disabled={pageIdx === 0} onClick={() => goPage(M_PAGES[pageIdx - 1])}>
+            ← {t('mBack')}
+          </button>
+          <span>
+            {pageIdx + 1} / {M_PAGES.length} · {t(M_PAGE_LABEL[mPage])}
+          </span>
+          <button className="btn primary" disabled={pageIdx === M_PAGES.length - 1} onClick={() => goPage(M_PAGES[pageIdx + 1])}>
+            {t('mNext')} →
+          </button>
+        </div>
       </div>
 
       {printing && (

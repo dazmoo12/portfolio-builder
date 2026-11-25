@@ -52,16 +52,28 @@ export function JourneySection({ t, journey, avds, onChange }: Props) {
           </div>
         </label>
       </div>
-      <label className="field">
-        <span>{t('payoutEndAge')}</span>
-        <input
-          type="number"
-          min={70}
-          max={100}
-          value={journey.endAge}
-          onChange={(e) => set({ endAge: Math.min(100, Math.max(70, Math.round(Number(e.target.value)))) })}
-        />
-      </label>
+      <div className="row2">
+        <label className="field">
+          <span>{t('payoutStartAge')}</span>
+          <input
+            type="number"
+            min={65}
+            max={70}
+            value={journey.payoutAge}
+            onChange={(e) => set({ payoutAge: Math.min(70, Math.max(65, Math.round(Number(e.target.value)))) })}
+          />
+        </label>
+        <label className="field">
+          <span>{t('payoutEndAge')}</span>
+          <input
+            type="number"
+            min={70}
+            max={100}
+            value={journey.endAge}
+            onChange={(e) => set({ endAge: Math.min(100, Math.max(70, Math.round(Number(e.target.value)))) })}
+          />
+        </label>
+      </div>
       <p className="hint">{t('recalcNote')}</p>
     </Section>
   );

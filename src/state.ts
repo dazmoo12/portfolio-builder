@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { defaultAdvisor } from './advisors';
+import { clientIdByName, newClientId, saveClient } from './clients';
 import { newUid, presetPositions, presets } from './catalog';
 import { defaultAssumptions, type Assumptions } from './catalog/assumptions';
 import type { Household } from './engine/household';
@@ -25,6 +26,8 @@ export interface JourneyOutput {
   lumpSum: number;
   payoutReturn: number;
   endAge: number;
+  /** Planned start of payouts, 65 to 70. */
+  payoutAge: number;
 }
 
 /** What the client output (preview, PDF, PPTX) shows – kept simple for print. */
@@ -45,12 +48,14 @@ export const defaultOutput = (): OutputSettings => ({
   scenario: 'neutral',
   showRange: false,
   allocationStyle: 'donut',
-  journey: { target: 'auto', lumpSum: 0.3, payoutReturn: 0.04, endAge: 85 },
+  journey: { target: 'auto', lumpSum: 0.3, payoutReturn: 0.04, endAge: 85, payoutAge: 65 },
   hidden: [],
 });
 
 export interface AppState {
   version: 1;
+  /** Identifies the client in the browser's list of saved clients. */
+  clientId: string;
   input: PortfolioInput;
   household: Household;
   /** Show the household budget page in preview and exports. */
@@ -72,6 +77,7 @@ const firstYear = Math.max(new Date().getFullYear() + 1, 2027);
 export function defaultState(): AppState {
   return {
     version: 1,
+    clientId: newClientId(),
     input: {
       // fictional demo client
       client: { name: 'Anna Beispiel', age: 32, birthDate: '1994-03-15', children: [{ id: 'c1', birthDate: '2021-06-10' }], adults: [] },
@@ -161,10 +167,13 @@ export function migrateState(raw: unknown): AppState | null {
   const s = raw as Partial<AppState>;
   if (!s || s.version !== 1 || !s.input?.positions) return null;
   const d = defaultState();
+  const input = migrateInput(s.input);
   return {
     ...d,
     ...s,
-    input: migrateInput(s.input),
+    // portfolios from before saved clients: reuse the entry with the same name, if any
+    clientId: s.clientId ?? clientIdByName(input.client.name ?? '') ?? d.clientId,
+    input,
     household: s.household ?? { income: [], expenses: [] },
     includeHousehold: s.includeHousehold ?? !!s.household,
     output: {
@@ -195,6 +204,7 @@ export function useAppState() {
     } catch {
       /* storage unavailable */
     }
+    saveClient(state.clientId, state.input.client.name, state);
   }, [state]);
 
   const update = useCallback((patch: Partial<AppState>) => setState((s) => ({ ...s, ...patch })), []);

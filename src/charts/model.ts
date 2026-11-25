@@ -56,7 +56,9 @@ export interface ViewModel {
   hiddenNames: string[];
   amounts: { monthly: number; oneOff: number };
   /** value etc. refer to the displayed scenario; pessimistic/neutral/optimistic are the totals of all scenarios. */
-  kpi: { value: number; paidIn: number; subsidy: number; gains: number } & Record<ScenarioKey, number>;
+  kpi: { value: number; paidIn: number; subsidy: number; baseSubsidy: number; childSubsidy: number; gains: number } & Record<ScenarioKey, number>;
+  /** Subsidy per adult with an AVD: base allowance (incl. starter bonus) and child bonus. */
+  subsidySplit: { name: string; base: number; child: number }[];
   development: {
     positions: { name: string; color: string; visible: boolean; values: number[] }[];
     totals: Record<ScenarioKey, number[]>;
@@ -135,6 +137,21 @@ export function buildViewModel(
   const totalAt = (sc: ScenarioKey, i: number) => adj(sumAt(sc, i, (s) => s.netValue), i);
   const paidIn = sumAt(scenario, yi, (s) => s.paidIn);
   const subsidy = sumAt(scenario, yi, (s) => s.subsidy);
+  const childSubsidy = sumAt(scenario, yi, (s) => s.childSubsidy);
+
+  // subsidy per person: each AVD belongs to one adult
+  const split = new Map<string, { name: string; base: number; child: number }>();
+  for (const { p } of shown) {
+    if (p.product.kind !== 'avd') continue;
+    const owner = adultOwner(client, p.position.owner);
+    const key = owner?.id ?? 'primary';
+    const name = (owner ? owner.name : client.name).trim() || t('secondAdult');
+    const e = split.get(key) ?? { name, base: 0, child: 0 };
+    const pt = p.series[yi];
+    e.base += adj(pt.subsidy - pt.childSubsidy, yi);
+    e.child += adj(pt.childSubsidy, yi);
+    split.set(key, e);
+  }
   const value = sumAt(scenario, yi, (s) => s.netValue);
 
   // weight each product's return by what is paid into it over the horizon
@@ -181,11 +198,14 @@ export function buildViewModel(
       value: adj(value, yi),
       paidIn: adj(paidIn, yi),
       subsidy: adj(subsidy, yi),
+      baseSubsidy: adj(subsidy - childSubsidy, yi),
+      childSubsidy: adj(childSubsidy, yi),
       gains: adj(value - paidIn - subsidy, yi),
       pessimistic: totalAt('pessimistic', yi),
       neutral: totalAt('neutral', yi),
       optimistic: totalAt('optimistic', yi),
     },
+    subsidySplit: [...split.values()],
     development: {
       positions: all.map((a) => ({ name: a.name, color: a.color, visible: a.visible, values: range.map((i) => adj(a.p.series[i].netValue, i)) })),
       totals: Object.fromEntries(SCENARIOS.map((sc) => [sc, range.map((i) => totalAt(sc, i))])) as Record<ScenarioKey, number[]>,
@@ -204,4 +224,19 @@ export function buildViewModel(
         )
       : undefined,
   };
+}
+
+/** "Anna: Grundzulage 9.800 € · Kinderzulage 6.000 €  |  Tom: …"; empty when there is nothing to split. */
+export function subsidySplitText(vm: ViewModel): string {
+  const { t, fmt, subsidySplit, kpi } = vm;
+  if (subsidySplit.length === 0 || (kpi.childSubsidy <= 0 && subsidySplit.length < 2)) return '';
+  return subsidySplit
+    .map((s) => `${s.name}: ${t('kpiBaseSubsidy')} ${fmt.eur(s.base)}${s.child > 0 ? ` · ${t('kpiChildSubsidy')} ${fmt.eur(s.child)}` : ''}`)
+    .join('  |  ');
+}
+
+/** "Erwachsene 9.800 € · Kinder 6.000 €" under the subsidy figure; empty without child bonus. */
+export function subsidyShortText(vm: ViewModel): string {
+  const { t, fmt, kpi } = vm;
+  return kpi.childSubsidy > 0 ? `${t('subsidyAdults')} ${fmt.eur(kpi.baseSubsidy)} · ${t('subsidyKids')} ${fmt.eur(kpi.childSubsidy)}` : '';
 }

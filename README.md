@@ -23,15 +23,19 @@ Languages: DE / EN / PT. The language switch changes interface and document toge
 
 **Automatic date-of-birth search:** when a folder is opened or files are uploaded and a date is missing, the tool searches in the background: files that look like IDs first (with OCR), then readable documents, then up to six other images. It understands ID card layouts and the machine-readable lines (validated by check digits). A date is only entered if it is clearly assignable: by the name next to it, or as the only adult date for a single client. Children are ignored, existing dates are never overwritten, and unclear cases are left for the advisor under client documents.
 
-**Adults and children:** a client can have any number of further adults, e.g. a partner or a grown-up child (name, date of birth or age). Each AVD is assigned to one person, because subsidies, starter bonus and payout age are personal; a child counts for one parent only ("Kinderzulage erhält"). Children have a date of birth, or a birth year if the date is unknown.
+**Adults and children:** a client can have any number of further adults, e.g. a partner or a grown-up child (name, date of birth or age). Each AVD is assigned to one person, because subsidies, starter bonus and payout age are personal; a child counts for one parent only ("Kinderzulage erhält"). Children have a date of birth, or a birth year if the date is unknown. A grown-up child listed as a further adult can be marked "Kind von" (child of): until 25, that parent's AVD receives its child bonus.
 
 **Start and term per contract:** set for each product in the portfolio list. The portfolio's timeline runs from the first start to the last end. The calculation keeps annual steps, so a contract counts from its start year; the month decides age-dependent rules exactly. After its term a contract's value stays unchanged, without further returns, and the output says so.
 
 **Assumptions and costs (left panel):** return assumptions per scenario and costs per product are editable: front load (funds 4 %, AVD 1 % on own contributions, both deducted from each payment), Geiger purchase markup, storage fee and buyback discount, and the brokerage account fee (36 € p.a., once per client depot, split across the fund products by payments). Returns are stated after the funds' running costs. Changed values are saved with each portfolio, carry over to new clients, and can be shared as a file.
 
-**Money journey:** saving phase (own contributions, subsidy, growth) and payout phase in one chart, for an AVD (per person) or the whole portfolio. Payout settings in the left panel: lump sum at payout start (up to 30 %, default 30 %), return in the payout phase (default 4 %), payouts until age 85. Payouts start when the contract ends, at 65 at the earliest; the monthly amount is set at the start and recalculated every 3 years, using up the capital by the end age. Amounts before tax, no costs in the payout phase. Shown in the preview, as its own PDF page and PowerPoint slide.
+**Money journey:** saving phase (own contributions, subsidy, growth) and payout phase in one chart, for an AVD (per person) or the whole portfolio. Payout settings in the left panel: payouts from age (65 to 70, default 65), lump sum at payout start (up to 30 %, default 30 %), return in the payout phase (default 4 %), payouts until age 85. Payouts start at the chosen age: a contract ending earlier waits, and contributions of a contract running longer are left out (with a note); the monthly amount is set at the start and recalculated every 3 years, using up the capital by the end age. Amounts before tax, no costs in the payout phase. Shown in the preview, as its own PDF page and PowerPoint slide.
 
 **Children** are assigned individually to the parent receiving their child bonus.
+
+**Government subsidy split:** the subsidy is shown as adults (base allowance incl. starter bonus) and children (child bonus), with one line per adult, in preview, PDF and PowerPoint.
+
+**Saved clients:** every client with a name is saved automatically in the browser and listed under "Gespeicherte Kunden" (open, delete). "+ New client" keeps the previous client there.
 
 **Advisor profiles:** save contact details once and pick a default. "+ New client" starts the next client with that advisor and the same output settings.
 
@@ -42,6 +46,8 @@ Languages: DE / EN / PT. The language switch changes interface and document toge
 - Images and scanned PDFs: "Text erkennen (OCR)" runs locally (tesseract.js). Only the language model is downloaded once from a CDN.
 - **Client data template (Excel)**: download, fill in, and drop it back in; it is imported exactly, in any language.
 - A demo folder with fictional documents is in `demo/Kundenordner_Anna_Beispiel` (regenerate with `npx vite-node scripts/make-demo-folder.ts`).
+
+**Phones and tablets:** below 960 px width the tool becomes six pages (client, household, portfolio, result, settings, export) with Back/Next. Opening a client folder needs the File System Access API (Edge/Chrome on a computer); on phones and tablets, files, including `portfolio.json`, are uploaded one by one, e.g. from the OneDrive app, and saved with "Save portfolio".
 
 Everything runs locally in the browser. No client data leaves the machine; state is kept in the browser and in "Save portfolio" files.
 
@@ -69,7 +75,7 @@ The app is a static site: Netlify only serves the files, and all calculations, e
 
 Use the Git connection, not a drag-and-drop deploy: drag-and-drop deploys don't run edge functions, so the site would be public. Search engines are blocked (`robots.txt`, `X-Robots-Tag`).
 
-Per-browser data: advisor profiles, custom templates and the last open client are stored in the browser of each advisor. Templates can be shared as template files.
+Per-browser data: advisor profiles, custom templates, saved clients and the last open client are stored in the browser of each advisor. Templates can be shared as template files.
 
 ## Architecture
 
@@ -123,7 +129,6 @@ Per-browser data: advisor profiles, custom templates and the last open client ar
    - CRM (Salesforce) import to pre-fill client and existing-contract data, plus a "switch existing Riester rate" case.
 2. **Server-side PDF** (headless browser) for one-click downloads instead of the print dialog.
 3. **Shared template library** (server storage instead of browser storage), with admin-maintained catalogue and assumptions and an audit log of which assumption version an export used.
-4. **AVD payout phase:** lump sum 30 %, annuity / payout-plan illustration.
-5. **Taxes:** Abgeltungsteuer, Teilfreistellung, deferred taxation of AVD payouts.
-6. **Monte Carlo fan chart** as an alternative to the three fixed scenarios.
-7. **Real product data:** live fund prices, gold price, KIDs.
+4. **Taxes:** Abgeltungsteuer, Teilfreistellung, deferred taxation of AVD payouts.
+5. **Monte Carlo fan chart** as an alternative to the three fixed scenarios.
+6. **Real product data:** live fund prices, gold price, KIDs.

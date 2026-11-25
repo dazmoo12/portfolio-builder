@@ -12,6 +12,8 @@ export interface JourneySettings {
   payoutReturn: number;
   /** Payouts run until this age. */
   endAge: number;
+  /** Planned start of payouts (AVD: 65 to 70). Default 65. */
+  payoutAge?: number;
 }
 
 export const RECALC_YEARS = 3;
@@ -35,6 +37,10 @@ export interface Journey {
   waitsForPayout: boolean;
   /** Payouts start later than the AVD allows. */
   tooLate: boolean;
+  /** The contract runs past the planned payout start: contributions after it are left out. */
+  cutAtPayout: boolean;
+  /** Age at which contributions end under the contract term. */
+  contractEndAge: number;
 }
 
 /** Annual payout at the start of each year that uses the capital up over n years. */
@@ -57,7 +63,11 @@ export function computeJourney(
   s: JourneySettings,
   deflate: (v: number, i: number) => number = (v) => v,
 ): Journey {
-  const payoutAge = Math.max(AVD_RULES.payoutEarliestAge, age0 + endIdx);
+  const planned = Math.min(Math.max(s.payoutAge ?? AVD_RULES.payoutEarliestAge, AVD_RULES.payoutEarliestAge), AVD_RULES.payoutLatestAge);
+  const contractEndAge = age0 + endIdx;
+  // payouts start at the planned age; a contract running longer stops paying in there,
+  // a contract ending earlier waits; clients already past the planned age start at contract end
+  const payoutAge = age0 < planned ? planned : contractEndAge;
   const payoutIdx = payoutAge - age0;
   const endAge = Math.max(s.endAge, payoutAge);
   // after the term the value stays as it is (see the projection)
@@ -123,7 +133,9 @@ export function computeJourney(
       total: deflate(lump, payoutIdx) + payouts,
       left: deflate(left, endAge - age0),
     },
-    waitsForPayout: payoutAge > age0 + endIdx,
+    waitsForPayout: payoutAge > contractEndAge,
     tooLate: payoutAge > AVD_RULES.payoutLatestAge,
+    cutAtPayout: payoutAge < contractEndAge,
+    contractEndAge,
   };
 }

@@ -5,7 +5,7 @@ import PptxGenJS from 'pptxgenjs';
 import type { HouseholdView } from '../charts/household';
 import { costLine } from '../charts/costs';
 import { journeyNotes } from '../ui/JourneyBlock';
-import type { ViewModel } from '../charts/model';
+import { subsidyShortText, subsidySplitText, type ViewModel } from '../charts/model';
 import { SCENARIOS } from '../engine/types';
 import type { Advisor } from '../state';
 import { onColor } from '../templates/themes';
@@ -171,11 +171,22 @@ export async function exportPptx(vm: ViewModel, advisor: Advisor, household?: Ho
       const y = 3.7 + i * 0.85;
       s.addShape(pptx.ShapeType.rect, { x: 0.6, y, w: 5.6, h: 0.72, fill: { color: hex(c.surface) } });
       s.addShape(pptx.ShapeType.ellipse, { x: 0.8, y: y + 0.21, w: 0.3, h: 0.3, fill: { color: col } });
-      s.addText(label, { x: 1.25, y, w: 2.6, h: 0.72, fontFace: B, fontSize: 13, color: hex(c.text), valign: 'middle' });
+      const sub = label === t('kpiSubsidy') ? subsidyShortText(vm) : '';
+      s.addText(
+        sub
+          ? [
+              { text: label, options: { fontSize: 13, breakLine: true } },
+              { text: sub, options: { fontSize: 9, color: hex(c.muted) } },
+            ]
+          : label,
+        { x: 1.25, y, w: 2.6, h: 0.72, fontFace: B, fontSize: 13, color: hex(c.text), valign: 'middle' },
+      );
       s.addText(fmt.eur(v), { x: 3.6, y, w: 1.8, h: 0.72, fontFace: H, fontSize: 16, bold: true, color: hex(c.text), align: 'right', valign: 'middle' });
       s.addText(k.value > 0 ? fmt.pct(v / k.value) : '–', { x: 5.4, y, w: 0.7, h: 0.72, fontFace: B, fontSize: 10, color: hex(c.muted), align: 'right', valign: 'middle' });
     });
-    if (partialNote) s.addText(partialNote, { x: 0.6, y: 6.3, w: 12.13, h: 0.4, fontFace: B, fontSize: 10, color: hex(c.muted) });
+    const split = subsidySplitText(vm);
+    const notes = [split && `${t('subsidySplit')}: ${split} (${t('subsidyBaseNote')})`, partialNote].filter(Boolean).join(' · ');
+    if (notes) s.addText(notes, { x: 0.6, y: 6.25, w: 12.13, h: 0.5, fontFace: B, fontSize: 9, color: hex(c.muted), valign: 'top' });
     if (charts.allocation) {
       s.addText(`${t('chartAllocation')} ${vm.year}`, { x: 6.7, y: 1.5, w: 6, h: 0.4, fontFace: H, fontSize: 16, bold: true, color: hex(c.text) });
       if (vm.output.allocationStyle === 'bar') {

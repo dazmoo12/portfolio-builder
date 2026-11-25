@@ -20,6 +20,9 @@ interface Props {
   onShowDocs: () => void;
 }
 
+// phones and tablets cannot pick a whole folder; files can be picked one by one (also from OneDrive)
+const mobileDevice = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches && !folderSupported();
+
 export function FolderSection({ t, state, folder, setFolder, setState, docs, setDocs, onShowDocs }: Props) {
   const [msgs, setMsgs] = useState<string[]>([]);
   const [error, setError] = useState('');
@@ -136,7 +139,7 @@ export function FolderSection({ t, state, folder, setFolder, setState, docs, set
           )}
         </div>
       ) : (
-        <div className="hint">{t('folderNotSupported')}</div>
+        <div className="hint">{t(mobileDevice ? 'folderMobileHint' : 'folderNotSupported')}</div>
       )}
       {folder && <div className="folder-name">📂 {folder.name}</div>}
 
@@ -157,9 +160,11 @@ export function FolderSection({ t, state, folder, setFolder, setState, docs, set
           <button className="btn" onClick={() => filesInput.current?.click()}>
             {t('uploadFiles')}
           </button>
-          <button className="btn" onClick={() => dirInput.current?.click()}>
-            {t('uploadFolder')}
-          </button>
+          {!mobileDevice && (
+            <button className="btn" onClick={() => dirInput.current?.click()}>
+              {t('uploadFolder')}
+            </button>
+          )}
         </div>
         <span className="hint">{t('dropHint')}</span>
       </div>

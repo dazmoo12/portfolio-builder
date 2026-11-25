@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { catalog, newUid, presetPositions, presets, products } from '../catalog';
 import { ageOn, ageToday, childBirthYear, validBirthDate, type Person } from '../engine/person';
-import { childBonusOwner, positionOwner, positionTiming, validateWeights } from '../engine/projection';
+import { childBonusOwner, grownUpChildParent, positionOwner, positionTiming, validateWeights } from '../engine/projection';
 import type { Adult, Child, PortfolioInput, Position, ProductGroup } from '../engine/types';
 import type { T, Format } from '../i18n';
 import type { AppState } from '../state';
@@ -139,8 +139,23 @@ export function ClientSection({ state, t, updateInput }: Props) {
             <input value={a.name} onChange={(e) => setAdult(a.id, { name: e.target.value })} />
           </label>
           <PersonDates t={t} person={a} onChange={(p) => setAdult(a.id, p)} />
+          <label className="field">
+            <span>{t('childOf')}</span>
+            <select value={grownUpChildParent(client, a) ?? ''} onChange={(e) => setAdult(a.id, { childOf: e.target.value || undefined })}>
+              <option value="">{t('childOfNone')}</option>
+              <option value="primary">{client.name || t('clientName')}</option>
+              {client.adults
+                .filter((x) => x.id !== a.id)
+                .map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {adultLabel(x)}
+                  </option>
+                ))}
+            </select>
+          </label>
         </div>
       ))}
+      {client.adults.length > 0 && <p className="hint">{t('grownUpChildHint')}</p>}
       <button className="link align-start" onClick={() => setClient({ adults: [...client.adults, { id: newUid(), name: '', age: client.age }] })}>
         {t('addAdult')}
       </button>

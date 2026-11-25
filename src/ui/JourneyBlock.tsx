@@ -4,12 +4,14 @@ import { useMemo } from 'react';
 import { Chart } from '../charts/Chart';
 import { journeyOption, type JourneyView } from '../charts/journey';
 import type { ViewModel } from '../charts/model';
+import { useNarrow } from './useNarrow';
 
 export function journeyNotes(vm: ViewModel, j: JourneyView): string[] {
   const { t } = vm;
   return [
     t('recalcNote'),
-    ...(j.waitsForPayout ? [t('journeyWaits')] : []),
+    ...(j.waitsForPayout ? [t('journeyWaits', { age: String(j.payoutAge) })] : []),
+    ...(j.cutAtPayout ? [t('journeyCut', { age: String(j.payoutAge), end: String(j.contractEndAge) })] : []),
     ...(j.tooLate ? [t('journeyTooLate')] : []),
     t('journeyTaxNote'),
   ];
@@ -17,7 +19,8 @@ export function journeyNotes(vm: ViewModel, j: JourneyView): string[] {
 
 export function JourneyBlock({ vm, j, print = false }: { vm: ViewModel; j: JourneyView; print?: boolean }) {
   const { t, fmt } = vm;
-  const option = useMemo(() => journeyOption(vm, j, print ? { animation: false, compact: true } : {}), [vm, j, print]);
+  const narrow = useNarrow() && !print;
+  const option = useMemo(() => journeyOption(vm, j, print ? { animation: false, compact: true } : { narrow }), [vm, j, print, narrow]);
   const tot = j.totals;
   return (
     <div className={`journey ${print ? 'print' : ''}`}>

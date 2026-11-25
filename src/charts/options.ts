@@ -9,6 +9,8 @@ interface Opts {
   animation?: boolean;
   /** Smaller fonts/legend for the print report. */
   compact?: boolean;
+  /** Phone screen: one-line scrollable legend, narrower axis labels. */
+  narrow?: boolean;
 }
 
 function base(vm: ViewModel, o: Opts) {
@@ -16,7 +18,7 @@ function base(vm: ViewModel, o: Opts) {
   return {
     animation: o.animation ?? true,
     textStyle: { fontFamily: vm.theme.fonts.body, color: c.text },
-    grid: { left: 8, right: 16, top: 16, bottom: o.compact ? 56 : 72, containLabel: true },
+    grid: { left: 8, right: 16, top: 16, bottom: o.compact ? 56 : o.narrow ? 40 : 72, containLabel: true },
     axisCommon: {
       axisLine: { lineStyle: { color: '#D5DAE1' } },
       axisTick: { show: false },
@@ -24,6 +26,7 @@ function base(vm: ViewModel, o: Opts) {
       splitLine: { lineStyle: { color: '#EEF0F3' } },
     },
     legend: {
+      type: (o.narrow ? 'scroll' : 'plain') as 'scroll' | 'plain',
       bottom: 0,
       icon: 'roundRect',
       itemWidth: 10,
@@ -66,7 +69,6 @@ export function developmentOption(vm: ViewModel, o: Opts = {}): EChartsOption {
     // dashed/dotted strokes for the other scenarios' totals, a solid stroke for contributions
     legend: {
       ...b.legend,
-      type: 'plain',
       itemWidth: 18,
       selected: Object.fromEntries(d.positions.map((p) => [p.name, p.visible])),
       data: [
@@ -142,7 +144,7 @@ export function allocationOption(vm: ViewModel, o: Opts = {}): EChartsOption {
         data: vm.positions.map((p) => p.name),
         axisLine: { show: false },
         axisTick: { show: false },
-        axisLabel: { color: c.text, fontSize: o.compact ? 9 : 11, width: o.compact ? 120 : 150, overflow: 'break' },
+        axisLabel: { color: c.text, fontSize: o.compact ? 9 : 11, width: o.compact ? 120 : o.narrow ? 100 : 150, overflow: 'break' },
       },
       series: [
         {
@@ -168,7 +170,7 @@ export function allocationOption(vm: ViewModel, o: Opts = {}): EChartsOption {
   return {
     animation: b.animation,
     textStyle: b.textStyle,
-    legend: { ...b.legend, type: 'plain', selected: Object.fromEntries(vm.allPositions.map((p) => [p.name, p.visible])) },
+    legend: { ...b.legend, selected: Object.fromEntries(vm.allPositions.map((p) => [p.name, p.visible])) },
     tooltip: {
       ...b.tooltip,
       trigger: 'item',
@@ -187,7 +189,7 @@ export function allocationOption(vm: ViewModel, o: Opts = {}): EChartsOption {
         type: 'pie',
         // print card is narrow: the legend wraps, so the ring sits higher and smaller
         radius: o.compact ? ['40%', '60%'] : ['50%', '74%'],
-        center: ['50%', o.compact ? '35%' : '42%'],
+        center: ['50%', o.compact ? '35%' : o.narrow ? '45%' : '42%'],
         padAngle: 1,
         itemStyle: { borderColor: '#FFFFFF', borderWidth: 2, borderRadius: 3 },
         label: { show: false },
@@ -221,6 +223,7 @@ export function compositionOption(vm: ViewModel, o: Opts = {}): EChartsOption {
     xAxis: {
       type: 'value',
       ...b.axisCommon,
+      splitNumber: o.narrow ? 2 : undefined,
       axisLabel: { ...b.axisCommon.axisLabel, formatter: (v: number) => vm.fmt.eurShort(v) },
     },
     yAxis: {
@@ -228,7 +231,7 @@ export function compositionOption(vm: ViewModel, o: Opts = {}): EChartsOption {
       data: names,
       inverse: true,
       ...b.axisCommon,
-      axisLabel: { ...b.axisCommon.axisLabel, color: c.text, width: o.compact ? 150 : 190, overflow: 'break' },
+      axisLabel: { ...b.axisCommon.axisLabel, color: c.text, width: o.compact ? 150 : o.narrow ? 100 : 190, overflow: 'break' },
     },
     series: parts.map((part) => ({
       name: vm.t(part.key),

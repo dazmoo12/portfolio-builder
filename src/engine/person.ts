@@ -44,6 +44,11 @@ export function childBirthYear(c: Child): number | undefined {
   return validBirthDate(c.birthDate) ? Number(c.birthDate.slice(0, 4)) : c.birthYear;
 }
 
+/** Birth year of an adult: from the date of birth, else estimated from the age at the start. */
+export function adultBirthYear(a: Person, startYear: number): number {
+  return validBirthDate(a.birthDate) ? Number(a.birthDate.slice(0, 4)) : startYear - a.age;
+}
+
 export function adultOwner(client: Client, id: string | undefined): Adult | undefined {
   return client.adults.find((a) => a.id === id);
 }

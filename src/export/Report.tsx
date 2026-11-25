@@ -4,7 +4,7 @@
 import { Chart } from '../charts/Chart';
 import type { HouseholdView } from '../charts/household';
 import { costLine } from '../charts/costs';
-import type { ViewModel } from '../charts/model';
+import { subsidyShortText, subsidySplitText, type ViewModel } from '../charts/model';
 import { allocationOption, compositionOption, developmentOption, scenarioOption } from '../charts/options';
 import type { Advisor } from '../state';
 import { HouseholdBlock } from '../ui/HouseholdBlock';
@@ -116,7 +116,7 @@ export function Report({ vm, advisor, household }: { vm: ViewModel; advisor: Adv
             <div>
               <span>{t('kpiSubsidy')}</span>
               <b>{fmt.eur(k.subsidy)}</b>
-              <em>{share(k.subsidy)}</em>
+              <em>{subsidyShortText(vm) || share(k.subsidy)}</em>
             </div>
             <div>
               <span>{t('kpiGains')}</span>
@@ -126,6 +126,11 @@ export function Report({ vm, advisor, household }: { vm: ViewModel; advisor: Adv
           </div>
         </div>
 
+        {subsidySplitText(vm) && (
+          <p className="r-partial">
+            <b>{t('subsidySplit')}:</b> {subsidySplitText(vm)} ({t('subsidyBaseNote')})
+          </p>
+        )}
         {vm.hiddenNames.length > 0 && <p className="r-partial">{t('partialNote', { products: vm.hiddenNames.join(', ') })}</p>}
 
         <div className={charts.allocation ? 'r-grid' : ''}>

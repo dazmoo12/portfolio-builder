@@ -244,3 +244,38 @@ describe('household budget', () => {
     expect(s.savingsQuota).toBeCloseTo(300 / 3455);
   });
 });
+
+describe('grown-up child and subsidy split', () => {
+  // client 50 with an AVD; grown-up child (20, born 2007) listed as an adult with its own AVD
+  const input = (childOf?: string): PortfolioInput => ({
+    ...avdOnly(150, 50, 2),
+    client: { name: 'Eltern', age: 50, children: [], adults: [{ id: 'kid', name: 'Kind', age: 20, birthDate: '2007-01-01', childOf }] },
+    positions: [
+      { uid: 'a', productId: 'avd', monthlyWeight: 0.5, oneOffWeight: 0 },
+      { uid: 'b', productId: 'avd', owner: 'kid', monthlyWeight: 0.5, oneOffWeight: 0 },
+    ],
+  });
+  const at1 = (i: PortfolioInput, uid: string) => project(i, catalog).neutral.positions.find((p) => p.position.uid === uid)!.series[1];
+
+  it('gives the parent the child bonus for a grown-up child under 25', () => {
+    expect(at1(input(), 'a').childSubsidy).toBe(0);
+    const p = at1(input('primary'), 'a');
+    expect(p.childSubsidy).toBe(300); // 75 €/month = 900 € own, bonus capped at 300 €
+    expect(p.subsidy).toBe(baseSubsidy(900) + 300);
+  });
+
+  it('keeps the grown-up child\'s own base subsidy and starter bonus separate', () => {
+    const k = at1(input('primary'), 'b');
+    expect(k.childSubsidy).toBe(0);
+    expect(k.subsidy).toBe(200 + baseSubsidy(900)); // starter bonus under 25 + base allowance
+  });
+
+  it('stops the child bonus at 25', () => {
+    const i = { ...input('primary'), client: { ...input('primary').client, adults: [{ id: 'kid', name: 'Kind', age: 30, birthDate: '1997-01-01', childOf: 'primary' }] } };
+    expect(at1(i, 'a').childSubsidy).toBe(0);
+  });
+
+  it('ignores a parent that was removed', () => {
+    expect(at1(input('gone'), 'a').childSubsidy).toBe(0);
+  });
+});
